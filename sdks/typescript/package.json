@@ -1,0 +1,39 @@
+{
+  "name": "@jarvisclaw/agent-intent-protocol",
+  "version": "0.1.0",
+  "description": "Agent Intent Protocol — TypeScript SDK. Declare intents, discover optimal AI providers.",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "test": "vitest run",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": ["ai", "agent", "intent", "protocol", "llm", "routing", "jarvisclaw"],
+  "author": "JarvisClaw <dev@jarvisclaw.ai>",
+  "license": "MIT",
+  "homepage": "https://github.com/api-jarvisclaw/agent-intent-protocol",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/api-jarvisclaw/agent-intent-protocol.git",
+    "directory": "sdks/typescript"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0",
+    "eslint": "^8.57.0"
+  }
+}

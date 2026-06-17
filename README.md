@@ -1,202 +1,149 @@
 # Agent Intent Protocol (AIP)
 
-> A protocol for AI agents to declare intents and automatically discover the best-matching service providers.
+> **A protocol for AI agents to declare intents and automatically discover the best-matching service providers.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Platform](https://img.shields.io/badge/platform-api.jarvisclaw.ai-blue)](https://api.jarvisclaw.ai)
+
+---
 
 ## The Problem
 
-x402 solved "how agents pay." But it didn't solve **"how agents choose who to pay."**
+**x402** solved "how agents pay." But who do they pay? When there are 40+ AI providers — each with different pricing, latency, quality, and capabilities — how does an agent choose?
 
-When an AI agent needs a service (LLM, image generation, TTS, etc.), it currently must hardcode provider choices. Agent Intent Protocol solves this by letting agents declare *what they need* and automatically matching them to the optimal provider.
+**Agent Intent Protocol** is the answer: agents declare **what** they need, and the protocol resolves **who** best provides it.
 
 ## How It Works
 
 ```
-Agent                    AIP Engine                 Providers
-  |                         |                          |
-  |-- Intent + Constraints →|                          |
-  |                         |-- Filter & Score -----→  |
-  |                         |←- Ranked matches --------|
-  |←-- Best match ---------|                          |
-  |                         |                          |
+┌─────────────┐          ┌──────────────────┐          ┌──────────────────┐
+│   AI Agent  │──intent──>│   AIP Resolver   │──query──>│ Provider Registry│
+│             │<─match────│                  │<─caps────│  (40+ providers) │
+└─────────────┘          └──────────────────┘          └──────────────────┘
 ```
 
-1. Agent declares an **intent** (e.g., `chat_completion`, `image_generation`)
-2. Agent sets **constraints** (max price, max latency, required features)
-3. Agent sets **preferences** (optimize for cost/speed/quality)
-4. AIP engine returns the best-matching provider in sub-millisecond time
+1. Agent declares an **intent** (e.g., "I need chat completion, under $0.01, with function calling")
+2. AIP **filters** providers by hard constraints
+3. AIP **scores** remaining providers by optimization preference
+4. Agent receives the **best match** + ranked alternatives
 
 ## Quick Start
 
-### Install
+### Python
 
 ```bash
 pip install agent-intent-protocol
 ```
 
-Or from source:
-
-```bash
-git clone https://github.com/api-jarvisclaw/agent-intent-protocol.git
-cd agent-intent-protocol
-pip install -e .
-```
-
-### Basic Usage (Python)
-
 ```python
 from agent_intent_protocol import AIPClient
 
-# Create client (defaults to https://api.jarvisclaw.ai)
-client = AIPClient()
-
-# Find the cheapest chat completion provider
+client = AIPClient()  # → api.jarvisclaw.ai
 result = client.resolve(
     intent="chat_completion",
     max_price_usd=0.01,
     optimize_for="cost"
 )
-
-print(f"Best: {result.best_match.provider_name}")
-print(f"Model: {result.best_match.model}")
-print(f"Price: ${result.best_match.price_usd}")
+print(result.best_match.provider_name)  # "DeepSeek V3"
 ```
 
-### With Constraints
-
-```python
-result = client.resolve(
-    intent="image_generation",
-    max_price_usd=0.05,
-    max_latency_ms=10000,
-    features=["photorealistic", "4k"],
-    optimize_for="quality"
-)
-```
-
-### Remote Mode (Live Provider Data)
-
-```python
-client = AIPClient(
-    api_key="sk-your-jarvisclaw-key",
-    mode="remote"  # Calls https://api.jarvisclaw.ai for live data
-)
-```
-
-## REST API
-
-Start the server:
+### TypeScript
 
 ```bash
-pip install agent-intent-protocol[server]
-uvicorn agent_intent_protocol.server:app --port 8900
+npm install @jarvisclaw/agent-intent-protocol
 ```
 
-### POST /v1/intent/resolve
+```typescript
+import { AIPClient } from '@jarvisclaw/agent-intent-protocol';
 
-```bash
-curl -X POST http://localhost:8900/v1/intent/resolve \
-  -H "Content-Type: application/json" \
-  -d '{
-    "intent": "chat_completion",
-    "constraints": {
-      "max_price_usd": 0.01,
-      "min_quality_score": 0.85
-    },
-    "preferences": {
-      "optimize_for": "cost"
-    }
-  }'
+const client = new AIPClient(); // → api.jarvisclaw.ai
+const result = await client.resolve({
+  intent: 'chat_completion',
+  constraints: { maxPriceUsd: 0.01 },
+  preferences: { optimizeFor: 'cost' },
+});
+console.log(result.bestMatch?.providerName); // "DeepSeek V3"
 ```
 
-Response:
-```json
-{
-  "success": true,
-  "intent": "chat_completion",
-  "best_match": {
-    "provider_id": "deepseek-v3",
-    "provider_name": "DeepSeek V3",
-    "model": "deepseek-chat",
-    "price_usd": 0.001,
-    "latency_ms": 600,
-    "quality_score": 0.88,
-    "features": ["function_calling", "json_mode"],
-    "score": 0.9267
-  },
-  "alternatives": [...],
-  "resolve_time_ms": 0.05
-}
+### Go
+
+```go
+import "github.com/api-jarvisclaw/agent-intent-protocol/sdks/go/aip"
+
+client := aip.NewClient() // → api.jarvisclaw.ai
+result, _ := client.Resolve(aip.IntentRequest{
+    Intent:      aip.ChatCompletion,
+    Constraints: &aip.Constraints{MaxPriceUSD: aip.Float64(0.01)},
+    Preferences: &aip.Preferences{OptimizeFor: aip.OptimizeCost},
+})
+fmt.Println(result.BestMatch.ProviderName) // "DeepSeek V3"
 ```
 
-### GET /v1/intent/types
-
-List all supported intent types.
-
-### GET /v1/providers?intent=chat_completion
-
-List available providers, optionally filtered by intent.
-
-## Supported Intents
+## Supported Intent Types
 
 | Intent | Description | Providers |
 |--------|-------------|-----------|
-| `chat_completion` | Text generation / chat | GPT-4o, Claude 4, DeepSeek, Gemini |
-| `image_generation` | Image creation | Ideogram 3, Flux Pro, DALL-E 3 |
-| `text_to_speech` | Voice synthesis | OpenAI TTS, ElevenLabs |
-| `speech_to_text` | Transcription | OpenAI Whisper |
-| `embedding` | Vector embeddings | OpenAI Embed, Voyage 3 |
-| `code_generation` | Code writing | Claude Code, Codex, DeepSeek Coder |
-| `web_search` | Web search | Tavily, Exa |
-
-## Constraints Reference
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `max_price_usd` | float | Maximum price per request |
-| `max_latency_ms` | int | Maximum acceptable latency |
-| `min_quality_score` | float | Minimum quality (0-1) |
-| `features` | list | Required features |
-| `min_context_tokens` | int | Minimum context window |
+| `chat_completion` | Text generation / chat | OpenAI, Anthropic, Google, DeepSeek, Mistral |
+| `image_generation` | Image creation | DALL·E, Midjourney, Stable Diffusion |
+| `text_to_speech` | Voice synthesis | ElevenLabs, OpenAI TTS |
+| `speech_to_text` | Transcription | Whisper, Deepgram |
+| `embedding` | Vector embeddings | OpenAI, Voyage, Cohere |
+| `code_generation` | Code assistance | Codex, Claude, DeepSeek Coder |
+| `web_search` | Internet search | Perplexity, Tavily, Brave |
+| `moderation` | Content safety | OpenAI Moderation, Perspective |
+| `translation` | Language translation | DeepL, Google Translate |
 
 ## Optimization Strategies
 
-| Strategy | Description |
-|----------|-------------|
-| `balanced` | Equal weight to cost, speed, quality (default) |
-| `quality` | Prioritize output quality |
-| `speed` | Prioritize low latency |
-| `cost` | Prioritize low price |
+| Strategy | Best For |
+|----------|----------|
+| `balanced` | General purpose (default) |
+| `quality` | Critical tasks requiring highest accuracy |
+| `speed` | Real-time applications |
+| `cost` | High-volume batch processing |
 
-## Platform
+## Protocol Specification
 
-This project is designed to work with [JarvisClaw](https://api.jarvisclaw.ai) — an AI API gateway with 40+ providers, x402 payment protocol, and MCP integration.
-
-In **local mode**, AIP uses a built-in provider registry for offline resolution. In **remote mode**, it fetches live provider data from the JarvisClaw platform.
+See [`spec/PROTOCOL.md`](spec/PROTOCOL.md) for the full protocol specification and JSON Schema.
 
 ## Architecture
 
 ```
-agent_intent_protocol/
-├── __init__.py      # Package entry, exports
-├── models.py        # Data models (Intent, Constraint, Preference, etc.)
-├── resolver.py      # Core matching engine
-├── client.py        # Python SDK client
-└── server.py        # FastAPI REST server
+agent-intent-protocol/
+├── spec/                    # Protocol specification & JSON Schema
+│   ├── PROTOCOL.md
+│   └── intent-schema-v1.json
+├── sdks/
+│   ├── python/             # Python SDK (pip install)
+│   ├── go/                 # Go SDK (go get)
+│   └── typescript/         # TypeScript SDK (npm install)
+├── server/                 # Reference server implementation
+├── LICENSE                 # MIT
+└── README.md
 ```
+
+## Default Platform
+
+All SDKs connect to **https://api.jarvisclaw.ai** by default. Every client accepts an endpoint parameter to target custom deployments.
+
+## Why AIP?
+
+| Feature | AIP | Manual Selection | LLM Router |
+|---------|-----|-----------------|------------|
+| Declarative intents | ✅ | ❌ | ❌ |
+| Multi-dimensional scoring | ✅ | ❌ | Partial |
+| Hard constraint filtering | ✅ | ❌ | ❌ |
+| Provider-agnostic | ✅ | ❌ | ❌ |
+| Sub-millisecond resolution | ✅ | N/A | ❌ |
+| Open protocol | ✅ | N/A | ❌ |
 
 ## Contributing
 
-Contributions are welcome! Please open an issue or submit a PR.
+Contributions are welcome! See each SDK's README for development setup.
 
 ```bash
-# Dev setup
 git clone https://github.com/api-jarvisclaw/agent-intent-protocol.git
 cd agent-intent-protocol
-pip install -e ".[dev]"
-pytest
 ```
 
 ## License

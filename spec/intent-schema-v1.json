@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Agent Intent Protocol v1.0",
+  "description": "A protocol for AI agents to declare intents and discover optimal service providers.",
+  "definitions": {
+    "IntentType": {
+      "type": "string",
+      "enum": [
+        "chat_completion",
+        "image_generation",
+        "text_to_speech",
+        "speech_to_text",
+        "embedding",
+        "code_generation",
+        "web_search",
+        "moderation",
+        "translation"
+      ]
+    },
+    "OptimizeFor": {
+      "type": "string",
+      "enum": ["balanced", "quality", "speed", "cost"],
+      "default": "balanced"
+    },
+    "IntentRequest": {
+      "type": "object",
+      "required": ["intent"],
+      "properties": {
+        "intent": { "$ref": "#/definitions/IntentType" },
+        "constraints": { "$ref": "#/definitions/Constraints" },
+        "preferences": { "$ref": "#/definitions/Preferences" },
+        "context": { "$ref": "#/definitions/Context" }
+      }
+    },
+    "Constraints": {
+      "type": "object",
+      "properties": {
+        "max_price_usd": { "type": "number", "minimum": 0 },
+        "max_latency_ms": { "type": "integer", "minimum": 0 },
+        "min_quality_score": { "type": "number", "minimum": 0, "maximum": 1 },
+        "min_context_tokens": { "type": "integer", "minimum": 0 },
+        "features": { "type": "array", "items": { "type": "string" } },
+        "exclude_providers": { "type": "array", "items": { "type": "string" } },
+        "region": { "type": "string" }
+      }
+    },
+    "Preferences": {
+      "type": "object",
+      "properties": {
+        "optimize_for": { "$ref": "#/definitions/OptimizeFor" },
+        "preferred_providers": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "Context": {
+      "type": "object",
+      "properties": {
+        "task_description": { "type": "string" },
+        "estimated_tokens": { "type": "integer" },
+        "priority": { "type": "string", "enum": ["low", "normal", "high", "critical"] }
+      }
+    },
+    "ProviderMatch": {
+      "type": "object",
+      "required": ["provider_id", "provider_name", "model", "score"],
+      "properties": {
+        "provider_id": { "type": "string" },
+        "provider_name": { "type": "string" },
+        "model": { "type": "string" },
+        "price_usd": { "type": "number" },
+        "latency_ms": { "type": "integer" },
+        "quality_score": { "type": "number" },
+        "features": { "type": "array", "items": { "type": "string" } },
+        "score": { "type": "number" },
+        "endpoint": { "type": "string", "format": "uri" }
+      }
+    },
+    "IntentResponse": {
+      "type": "object",
+      "required": ["success", "intent"],
+      "properties": {
+        "success": { "type": "boolean" },
+        "intent": { "$ref": "#/definitions/IntentType" },
+        "best_match": { "$ref": "#/definitions/ProviderMatch" },
+        "alternatives": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/ProviderMatch" }
+        },
+        "resolve_time_ms": { "type": "number" },
+        "message": { "type": "string" }
+      }
+    }
+  }
+}
