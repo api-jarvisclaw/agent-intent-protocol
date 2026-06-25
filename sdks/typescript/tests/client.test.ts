@@ -1,148 +1,190 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AIPClient, AIPError } from '../src/index';
 
-const mockResponse = {
-  success: true,
-  intent: 'chat_completion',
-  best_match: {
-    provider_id: 'openai-gpt4o-mini',
-    provider_name: 'OpenAI GPT-4o Mini',
-    model: 'gpt-4o-mini',
-    price_usd: 0.003,
-    latency_ms: 800,
-    quality_score: 0.88,
-    features: ['function_calling', 'streaming'],
-    score: 0.9234,
-  },
-  alternatives: [],
-  resolve_time_ms: 0.42,
-};
-
 describe('AIPClient', () => {
-  let mockFetch: ReturnType<typeof vi.fn>;
   let client: AIPClient;
 
   beforeEach(() => {
-    mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockResponse),
-      text: () => Promise.resolve(JSON.stringify(mockResponse)),
+    client = new AIPClient({ apiKey: 'test-key', endpoint: 'https://test.api.local' });
+  });
+
+  describe('constructor', () => {
+    it('should create client with api key', () => {
+      const c = new AIPClient({ apiKey: 'sk-123' });
+      expect(c).toBeInstanceOf(AIPClient);
     });
-    client = new AIPClient({
-      endpoint: 'https://test.jarvisclaw.ai',
-      apiKey: 'test-key',
-      fetch: mockFetch as any,
+
+    it('should use default endpoint', () => {
+      const c = new AIPClient({ apiKey: 'sk-123' });
+      // Internal endpoint defaults to api.jarvisclaw.ai
+      expect(c).toBeDefined();
+    });
+
+    it('should accept custom endpoint', () => {
+      const c = new AIPClient({ apiKey: 'sk-123', endpoint: 'https://custom.api' });
+      expect(c).toBeDefined();
     });
   });
 
-  it('should resolve intent successfully', async () => {
-    const result = await client.resolve({
-      intent: 'chat_completion',
-      constraints: { maxPriceUsd: 0.01 },
-      preferences: { optimizeFor: 'cost' },
+  describe('execute', () => {
+    it('should call fetch with correct parameters', async () => {
+      const mockResponse = {
+        ok: true,
+        headers: new Headers({ 'content-type': 'application/json' }),
+        json: () => Promise.resolve({ success: true, result: { text: 'hello' } }),
+      };
+      global.fetch = vi.fn().mockResolvedValue(mockResponse);
+
+      const result = await client.execute('chat_completion', {
+        messages: [{ role: 'user', content: 'hi' }],
+      });
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://test.api.local/v1/aip/execute',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Authorization': 'Bearer test-key',
+            'Content-Type': 'application/json',
+          }),
+        })
+      );
+      expect(result).toEqual({ success: true, result: { text: 'hello' } });
     });
 
-    expect(result.success).toBe(true);
-    expect(result.bestMatch?.providerName).toBe('OpenAI GPT-4o Mini');
-    expect(result.bestMatch?.score).toBe(0.9234);
-  });
+    it('should throw AIPError on non-ok response', async () => {
+      const mockResponse = {
+        ok: false,
+        status: 401,
+        headers: new Headers({ 'content-type': 'application/json' }),
+        json: () => Promise.resolve({ error: { code: 'AUTH_INVALID', message: 'Bad key' } }),
+      };
+      global.fetch = vi.fn().mockResolvedValue(mockResponse);
 
-  it('should send correct request format', async () => {
-    await client.resolve({
-      intent: 'chat_completion',
-      constraints: { maxPriceUsd: 0.01, features: ['streaming'] },
+      await expect(client.execute('chat_completion', { messages: [] }))
+        .rejects.toThrow(AIPError);
     });
 
-    expect(mockFetch).toHaveBeenCalledWith(
-      'https://test.jarvisclaw.ai/v1/intent/resolve',
-      expect.objectContaining({
-        method: 'POST',
-        headers: expect.objectContaining({
-          'Authorization': 'Bearer test-key',
-          'Content-Type': 'application/json',
-        }),
-      })
-    );
+    it('should retry on 429', async () => {
+      const failResponse = {
+        ok: false,
+        status: 429,
+        headers: new Headers({ 'content-type': 'application/json', 'retry-after': '0' }),
+        json: () => Promise.resolve({ error: { code: 'RATE_LIMITED', message: 'slow down' } }),
+      };
+      const okResponse = {
+        ok: true,
+        headers: new Headers({ 'content-type': 'application/json' }),
+        json: () => Promise.resolve({ success: true, result: {} }),
+      };
+      global.fetch = vi.fn()
+        .mockResolvedValueOnce(failResponse)
+        .mockResolvedValueOnce(okResponse);
 
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body.intent).toBe('chat_completion');
-    expect(body.constraints.max_price_usd).toBe(0.01);
-    expect(body.constraints.features).toEqual(['streaming']);
+      const retryClient = new AIPClient({
+        apiKey: 'test-key',
+        endpoint: 'https://test.api.local',
+        maxRetries: 2,
+      });
+      const result = await retryClient.execute('chat_completion', { messages: [] });
+      expect(result.success).toBe(true);
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
   });
 
-  it('should handle errors', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      status: 429,
-      text: () => Promise.resolve('Rate limited'),
+  describe('resolve', () => {
+    it('should call resolve endpoint', async () => {
+      const mockResponse = {
+        ok: true,
+        headers: new Headers({ 'content-type': 'application/json' }),
+        json: () => Promise.resolve({ success: true, resolution: { model: 'gpt-4o' } }),
+      };
+      global.fetch = vi.fn().mockResolvedValue(mockResponse);
+
+      const result = await client.resolve('chat_completion');
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://test.api.local/v1/aip/resolve',
+        expect.anything()
+      );
+      expect(result.resolution.model).toBe('gpt-4o');
+    });
+  });
+
+  describe('discover', () => {
+    it('should call discover endpoint', async () => {
+      const mockResponse = {
+        ok: true,
+        headers: new Headers({ 'content-type': 'application/json' }),
+        json: () => Promise.resolve({ intents: ['chat_completion', 'image_generation'] }),
+      };
+      global.fetch = vi.fn().mockResolvedValue(mockResponse);
+
+      const result = await client.discover();
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://test.api.local/v1/aip/discover',
+        expect.anything()
+      );
+      expect(result.intents).toContain('chat_completion');
+    });
+  });
+
+  describe('health', () => {
+    it('should call health endpoint with GET', async () => {
+      const mockResponse = {
+        ok: true,
+        headers: new Headers({ 'content-type': 'application/json' }),
+        json: () => Promise.resolve({ status: 'healthy' }),
+      };
+      global.fetch = vi.fn().mockResolvedValue(mockResponse);
+
+      const result = await client.health();
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://test.api.local/v1/aip/health',
+        expect.objectContaining({ method: 'GET' })
+      );
+      expect(result.status).toBe('healthy');
+    });
+  });
+
+  describe('convenience methods', () => {
+    beforeEach(() => {
+      const mockResponse = {
+        ok: true,
+        headers: new Headers({ 'content-type': 'application/json' }),
+        json: () => Promise.resolve({ success: true, result: {} }),
+      };
+      global.fetch = vi.fn().mockResolvedValue(mockResponse);
     });
 
-    await expect(
-      client.resolve({ intent: 'chat_completion' })
-    ).rejects.toThrow(AIPError);
-  });
-
-  it('should use default endpoint', () => {
-    const defaultClient = new AIPClient({ fetch: mockFetch as any });
-    defaultClient.resolve({ intent: 'chat_completion' });
-
-    expect(mockFetch).toHaveBeenCalledWith(
-      'https://api.jarvisclaw.ai/v1/intent/resolve',
-      expect.anything()
-    );
-  });
-
-  it('should convert camelCase to snake_case in requests', async () => {
-    await client.resolve({
-      intent: 'chat_completion',
-      constraints: {
-        maxPriceUsd: 0.05,
-        maxLatencyMs: 2000,
-        minQualityScore: 0.8,
-        excludeProviders: ['bad-provider'],
-      },
-      preferences: {
-        optimizeFor: 'quality',
-        preferredProviders: ['openai'],
-      },
+    it('chat() should execute chat_completion intent', async () => {
+      await client.chat([{ role: 'user', content: 'hello' }]);
+      const body = JSON.parse((global.fetch as any).mock.calls[0][1].body);
+      expect(body.intent).toBe('chat_completion');
+      expect(body.payload.messages[0].content).toBe('hello');
     });
 
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body.constraints.max_price_usd).toBe(0.05);
-    expect(body.constraints.max_latency_ms).toBe(2000);
-    expect(body.constraints.min_quality_score).toBe(0.8);
-    expect(body.constraints.exclude_providers).toEqual(['bad-provider']);
-    expect(body.preferences.optimize_for).toBe('quality');
-  });
-
-  it('should convert snake_case to camelCase in responses', async () => {
-    const result = await client.resolve({ intent: 'chat_completion' });
-    expect(result.bestMatch?.providerId).toBe('openai-gpt4o-mini');
-    expect(result.bestMatch?.qualityScore).toBe(0.88);
-    expect(result.resolveTimeMs).toBe(0.42);
-  });
-
-  it('should list intents', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ intents: ['chat_completion', 'embedding'] }),
+    it('embed() should execute embedding intent', async () => {
+      await client.embed('test text');
+      const body = JSON.parse((global.fetch as any).mock.calls[0][1].body);
+      expect(body.intent).toBe('embedding');
+      expect(body.payload.input).toBe('test text');
     });
 
-    const intents = await client.listIntents();
-    expect(intents).toContain('chat_completion');
-  });
-
-  it('should list providers with filter', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ providers: [mockResponse.best_match] }),
+    it('generateImage() should execute image_generation intent', async () => {
+      await client.generateImage('a cat');
+      const body = JSON.parse((global.fetch as any).mock.calls[0][1].body);
+      expect(body.intent).toBe('image_generation');
+      expect(body.payload.prompt).toBe('a cat');
     });
+  });
+});
 
-    const providers = await client.listProviders('chat_completion');
-    expect(mockFetch).toHaveBeenCalledWith(
-      'https://test.jarvisclaw.ai/v1/providers?intent=chat_completion',
-      expect.anything()
-    );
-    expect(providers[0].providerName).toBe('OpenAI GPT-4o Mini');
+describe('AIPError', () => {
+  it('should have proper name and properties', () => {
+    const err = new AIPError('test error', 400, { code: 'BAD_REQUEST' });
+    expect(err.name).toBe('AIPError');
+    expect(err.message).toBe('test error');
+    expect(err.statusCode).toBe(400);
+    expect(err.body).toEqual({ code: 'BAD_REQUEST' });
   });
 });

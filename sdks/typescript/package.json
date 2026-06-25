@@ -1,7 +1,7 @@
 {
   "name": "@jarvisclaw/agent-intent-protocol",
-  "version": "0.1.0",
-  "description": "Agent Intent Protocol — TypeScript SDK. Declare intents, discover optimal AI providers.",
+  "version": "2.1.0",
+  "description": "Agent Intent Protocol — TypeScript SDK. One interface for all AI platform capabilities.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -13,13 +13,14 @@
     }
   },
   "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "lint": "eslint src/",
-    "typecheck": "tsc --noEmit"
+    "test:watch": "vitest",
+    "lint": "eslint src/ tests/",
+    "prepublishOnly": "npm run build"
   },
-  "keywords": ["ai", "agent", "intent", "protocol", "llm", "routing", "jarvisclaw"],
-  "author": "JarvisClaw <dev@jarvisclaw.ai>",
+  "keywords": ["ai", "agent", "intent", "protocol", "llm", "jarvisclaw", "aip"],
   "license": "MIT",
   "homepage": "https://github.com/api-jarvisclaw/agent-intent-protocol",
   "repository": {
@@ -30,6 +31,10 @@
   "engines": {
     "node": ">=18.0.0"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "devDependencies": {
     "tsup": "^8.0.0",
     "typescript": "^5.4.0",
