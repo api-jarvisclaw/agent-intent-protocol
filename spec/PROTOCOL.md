@@ -1,65 +1,67 @@
-# Agent Intent Protocol — Specification v1.0
+# Agent Intent Protocol — Specification v2.0
 
 ## Overview
 
-The Agent Intent Protocol (AIP) enables AI agents to declare **what** they need (intent + constraints) rather than **which** provider to use. The protocol resolves intents to optimal providers through multi-dimensional scoring.
+The Agent Intent Protocol (AIP) provides a **single interface** for AI agents to access all platform capabilities. Agents declare **what** they want (intent + payload), and the platform handles provider selection, execution, and billing.
+
+**Philosophy:** One SDK call → the platform does everything.
 
 ## Core Concepts
 
 ### Intent
-A declarative statement of what an agent needs to accomplish. Intents are typed and map to categories of AI services.
+A declarative statement of what the agent needs. Examples: `chat_completion`, `image_generation`, `web_search`, `text_to_speech`, `video_generation`.
 
-### Constraints
-Hard requirements that providers **must** satisfy to be considered. Any provider failing a constraint is excluded.
+### Payload
+The actual request data specific to each intent (messages, prompts, parameters).
 
-### Preferences
-Soft optimization directives that influence scoring among eligible providers.
+### Constraints (optional)
+Hard requirements for provider selection: max price, required features, excluded models, etc.
+
+### Optimization Strategy
+How to pick among eligible providers: `balanced` (default), `cost`, `speed`, `quality`.
 
 ### Resolution
-The process of matching an intent to the best provider, considering constraints, preferences, and real-time provider state.
+The platform's internal process of selecting the optimal provider. Can be invoked standalone (`resolve`) or as part of execution (`execute`).
 
 ## Protocol Flow
 
 ```
-Agent                          AIP Resolver                    Provider Registry
-  |                                |                                |
-  |── IntentRequest ──────────────>|                                |
-  |                                |── Query providers ────────────>|
-  |                                |<── Provider capabilities ──────|
-  |                                |                                |
-  |                                |   [Filter by constraints]      |
-  |                                |   [Score by preferences]       |
-  |                                |   [Rank candidates]            |
-  |                                |                                |
-  |<── IntentResponse ─────────────|                                |
-  |   (best_match + alternatives)  |                                |
+Agent                              AIP Platform                      Providers (40+)
+  │                                    │                                 │
+  │── POST /v1/aip/execute ──────────>│                                 │
+  │   { intent, payload, optimize }   │                                 │
+  │                                    │── [resolve: filter + score] ──>│
+  │                                    │<── [best provider selected] ───│
+  │                                    │                                 │
+  │                                    │── [execute on provider] ──────>│
+  │                                    │<── [provider response] ────────│
+  │                                    │                                 │
+  │<── Result ─────────────────────────│                                 │
+  │   { data, meta: { model, cost } } │                                 │
 ```
 
 ## Endpoints
 
-### POST /v1/intent/resolve
+### POST /v1/aip/execute
 
-Resolve an intent to the best matching provider.
+**The primary endpoint.** Resolve intent + execute in one call.
 
 **Request:**
 ```json
 {
   "intent": "chat_completion",
+  "payload": {
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "Explain quantum computing in one sentence."}
+    ],
+    "temperature": 0.7
+  },
+  "optimize_for": "balanced",
   "constraints": {
-    "max_price_usd": 0.01,
-    "max_latency_ms": 2000,
-    "min_quality_score": 0.8,
+    "max_price_per_token": 0.00005,
     "features": ["function_calling"],
-    "exclude_providers": ["provider-x"]
-  },
-  "preferences": {
-    "optimize_for": "balanced",
-    "preferred_providers": ["openai", "anthropic"]
-  },
-  "context": {
-    "task_description": "Customer support chatbot",
-    "estimated_tokens": 4000,
-    "priority": "high"
+    "exclude_models": ["gpt-3.5-turbo"]
   }
 }
 ```
@@ -68,48 +70,176 @@ Resolve an intent to the best matching provider.
 ```json
 {
   "success": true,
-  "intent": "chat_completion",
-  "best_match": {
-    "provider_id": "openai-gpt4o-mini",
-    "provider_name": "OpenAI GPT-4o Mini",
-    "model": "gpt-4o-mini",
-    "price_usd": 0.003,
-    "latency_ms": 800,
-    "quality_score": 0.88,
-    "features": ["function_calling", "streaming", "json_mode"],
-    "score": 0.9234,
-    "endpoint": "https://api.jarvisclaw.ai/v1/chat/completions"
+  "data": {
+    "choices": [{
+      "message": {"role": "assistant", "content": "Quantum computing uses..."},
+      "finish_reason": "stop"
+    }],
+    "usage": {"prompt_tokens": 25, "completion_tokens": 12}
   },
-  "alternatives": [...],
-  "resolve_time_ms": 0.42
+  "meta": {
+    "model": "gpt-4o-mini",
+    "provider": "openai",
+    "cost_usd": 0.000185,
+    "latency_ms": 823,
+    "resolve_time_ms": 1.2
+  }
 }
 ```
 
-### GET /v1/intents
+### POST /v1/aip/resolve
 
-List all supported intent types.
+Resolve an intent to the best provider **without executing**. Useful for inspection, debugging, or when the agent wants to execute manually.
 
-### GET /v1/providers?intent={type}
+**Request:**
+```json
+{
+  "intent": "image_generation",
+  "optimize_for": "quality",
+  "constraints": {
+    "max_price_usd": 0.05
+  },
+  "context": {
+    "description": "Product photography for e-commerce"
+  }
+}
+```
 
-List available providers, optionally filtered by intent type.
+**Response:**
+```json
+{
+  "success": true,
+  "intent": "image_generation",
+  "resolution": {
+    "model": "dall-e-3",
+    "provider": "openai",
+    "endpoint": "https://api.jarvisclaw.ai/v1/images/generations",
+    "score": 0.94,
+    "reason": "Highest quality score for image generation within budget",
+    "price": {"per_image": 0.04},
+    "latency_ms": 8000
+  },
+  "alternatives": [
+    {"model": "stable-diffusion-xl", "provider": "stability", "score": 0.82},
+    {"model": "midjourney-v6", "provider": "midjourney", "score": 0.78}
+  ]
+}
+```
 
-### GET /v1/health
+### GET /v1/aip/discover
 
-Health check endpoint.
+List all available intents, models, and services.
 
-## Scoring Algorithm
+**Query Parameters:**
+- `category` (optional): Filter by category (`ai`, `marketplace`, `media`)
 
-The resolver uses weighted multi-dimensional scoring:
+**Response:**
+```json
+{
+  "intents": [
+    {
+      "name": "chat_completion",
+      "description": "Text generation and conversation",
+      "category": "ai",
+      "payload_schema": {"$ref": "#/schemas/chat_completion"}
+    },
+    {
+      "name": "image_generation",
+      "description": "Generate images from text prompts",
+      "category": "media"
+    }
+  ],
+  "models": [
+    {
+      "id": "gpt-4o",
+      "provider": "openai",
+      "capabilities": ["chat", "function_calling", "vision", "json_mode"],
+      "pricing": {"input": 2.50, "output": 10.00}
+    }
+  ],
+  "services": [
+    {
+      "name": "web_search",
+      "description": "Search the internet",
+      "actions": ["search", "news", "images"]
+    }
+  ]
+}
+```
 
-| Optimize For | Price Weight | Latency Weight | Quality Weight |
-|---|---|---|---|
-| balanced | 0.33 | 0.33 | 0.34 |
-| quality | 0.15 | 0.15 | 0.70 |
-| speed | 0.15 | 0.70 | 0.15 |
-| cost | 0.70 | 0.15 | 0.15 |
+### GET /v1/aip/health
 
-Scores are normalized to [0, 1] within each dimension before weighting.
+Platform health check.
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "version": "2.0.0",
+  "providers_online": 42,
+  "uptime_seconds": 864000
+}
+```
+
+## Supported Intents
+
+| Intent | Description | Example Providers |
+|--------|-------------|-------------------|
+| `chat_completion` | Text generation / chat | OpenAI, Anthropic, Google, DeepSeek, Mistral |
+| `image_generation` | Image creation from text | DALL·E 3, Stable Diffusion XL, Midjourney |
+| `video_generation` | Video creation from text | Runway, Pika, Kling |
+| `text_to_speech` | Voice synthesis | ElevenLabs, OpenAI TTS |
+| `speech_to_text` | Audio transcription | Whisper, Deepgram |
+| `embedding` | Vector embeddings | OpenAI, Voyage, Cohere |
+| `web_search` | Internet search | Perplexity, Tavily, Brave |
+| `code_generation` | Code assistance | Claude, DeepSeek Coder |
+| `moderation` | Content safety | OpenAI Moderation |
+| `translation` | Language translation | DeepL, Google Translate |
+| `marketplace_*` | Platform marketplace services | Dynamic catalog |
+
+## Optimization Strategies
+
+| Strategy | Behavior |
+|----------|----------|
+| `balanced` | Equal weight across cost, speed, quality (default) |
+| `quality` | Prefer highest capability models regardless of cost |
+| `speed` | Prefer lowest latency providers |
+| `cost` | Prefer cheapest providers that meet quality floor |
+
+## Authentication
+
+All requests require a Bearer token:
+
+```
+Authorization: Bearer sk-your-api-key
+```
+
+Keys are provisioned at https://api.jarvisclaw.ai.
+
+## Error Format
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "NO_PROVIDER_MATCH",
+    "message": "No provider satisfies all constraints",
+    "details": {
+      "intent": "chat_completion",
+      "failed_constraint": "max_price_per_token < 0.000001"
+    }
+  }
+}
+```
+
+## Streaming
+
+For `chat_completion` and similar intents, pass `"stream": true` in the payload. The response will be Server-Sent Events (SSE) in OpenAI-compatible format.
 
 ## Default Platform
 
-The reference implementation connects to **https://api.jarvisclaw.ai** by default. All SDK clients accept an `endpoint` parameter to override this.
+All SDKs connect to **https://api.jarvisclaw.ai** by default. Every client accepts an `endpoint` parameter to target custom deployments.
+
+## Versioning
+
+The protocol uses URL versioning (`/v1/`). Breaking changes increment the version number. The current version is **v2.0**.

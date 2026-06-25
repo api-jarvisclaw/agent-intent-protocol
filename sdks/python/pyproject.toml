@@ -1,29 +1,28 @@
 [project]
 name = "agent-intent-protocol"
-version = "0.1.0"
-description = "A protocol for AI agents to declare intents and automatically discover the best-matching service providers."
+version = "2.0.0"
+description = "One interface for AI agents to use all JarvisClaw platform capabilities — routing, execution, and discovery via the Agent Intent Protocol."
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
 authors = [
     {name = "JarvisClaw", email = "dev@jarvisclaw.ai"}
 ]
-keywords = ["ai", "agent", "intent", "protocol", "llm", "routing", "jarvisclaw"]
+keywords = ["ai", "agent", "intent", "protocol", "llm", "routing", "jarvisclaw", "aip"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 
-dependencies = []
+dependencies = [
+    "httpx>=0.24.0",
+]
 
 [project.optional-dependencies]
-server = ["fastapi>=0.100.0", "uvicorn>=0.20.0"]
-client = ["httpx>=0.24.0"]
-all = ["fastapi>=0.100.0", "uvicorn>=0.20.0", "httpx>=0.24.0"]
-dev = ["pytest>=7.0", "pytest-asyncio>=0.21.0", "httpx>=0.24.0"]
+dev = ["pytest>=7.0", "pytest-httpx>=0.21.0", "ruff>=0.1.0"]
 
 [project.urls]
 Homepage = "https://github.com/api-jarvisclaw/agent-intent-protocol"
@@ -31,9 +30,6 @@ Documentation = "https://github.com/api-jarvisclaw/agent-intent-protocol#readme"
 Repository = "https://github.com/api-jarvisclaw/agent-intent-protocol"
 Issues = "https://github.com/api-jarvisclaw/agent-intent-protocol/issues"
 Platform = "https://api.jarvisclaw.ai"
-
-[project.scripts]
-aip-server = "agent_intent_protocol.server:app"
 
 [build-system]
 requires = ["hatchling"]
@@ -44,3 +40,7 @@ packages = ["agent_intent_protocol"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100

@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AIP Execute Request",
+  "description": "Schema for Agent Intent Protocol v2 execute endpoint",
+  "type": "object",
+  "required": ["intent", "payload"],
+  "properties": {
+    "intent": {
+      "type": "string",
+      "description": "The intent type to execute",
+      "examples": ["chat_completion", "image_generation", "web_search", "embedding"]
+    },
+    "payload": {
+      "type": "object",
+      "description": "Intent-specific request data (messages, prompts, parameters)",
+      "additionalProperties": true
+    },
+    "optimize_for": {
+      "type": "string",
+      "enum": ["balanced", "cost", "speed", "quality"],
+      "default": "balanced",
+      "description": "Optimization strategy for provider selection"
+    },
+    "constraints": {
+      "type": "object",
+      "description": "Hard requirements for provider filtering",
+      "properties": {
+        "max_price_usd": {
+          "type": "number",
+          "description": "Maximum total price in USD for this request"
+        },
+        "max_price_per_token": {
+          "type": "number",
+          "description": "Maximum price per token (for text intents)"
+        },
+        "max_latency_ms": {
+          "type": "integer",
+          "description": "Maximum acceptable latency in milliseconds"
+        },
+        "features": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Required features (e.g., function_calling, vision, json_mode)"
+        },
+        "models": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Restrict to specific models"
+        },
+        "exclude_models": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Exclude specific models"
+        },
+        "providers": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Restrict to specific providers"
+        },
+        "exclude_providers": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Exclude specific providers"
+        }
+      },
+      "additionalProperties": true
+    },
+    "context": {
+      "type": "object",
+      "description": "Optional context to help the resolver make better decisions",
+      "properties": {
+        "task_description": {
+          "type": "string"
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["low", "normal", "high", "critical"]
+        }
+      },
+      "additionalProperties": true
+    },
+    "stream": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether to stream the response (SSE)"
+    }
+  },
+  "additionalProperties": false
+}
