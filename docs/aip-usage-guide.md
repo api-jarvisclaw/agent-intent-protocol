@@ -685,7 +685,498 @@ curl -s "${AIP_ENDPOINT}/v1/intent/execute" \
 
 ---
 
-## 12. 支持的 Intent 类型总览
+## 12. Image Generation — 图片生成
+
+**场景**: 根据文本 prompt 生成图片，支持指定尺寸、风格等参数。
+
+### Python
+
+```python
+response = client.execute(
+    intent="image_generation",
+    payload={
+        "prompt": "A futuristic city skyline at sunset, cyberpunk style",
+        "size": "1024x1024",
+        "style": "vivid",
+        "n": 1,
+    },
+    optimize_for="quality",
+)
+if response.success:
+    print(f"Image URL: {response.result['url']}")
+    print(f"Revised prompt: {response.result.get('revised_prompt', 'N/A')}")
+    print(f"Provider: {response.provider}, Cost: ${response.cost_usd}")
+```
+
+### Go
+
+```go
+img, err := client.Execute(ctx, &aip.ExecuteRequest{
+    Intent: "image_generation",
+    Payload: map[string]any{
+        "prompt": "A futuristic city skyline at sunset, cyberpunk style",
+        "size":   "1024x1024",
+        "style":  "vivid",
+        "n":      1,
+    },
+    Preferences: &aip.Preferences{OptimizeFor: "quality"},
+})
+if err == nil {
+    fmt.Printf("Image URL: %s\n", img.Result["url"])
+    fmt.Printf("Cost: $%f\n", img.CostUSD)
+}
+```
+
+### TypeScript
+
+```typescript
+const img = await client.execute({
+    intent: 'image_generation',
+    payload: {
+        prompt: 'A futuristic city skyline at sunset, cyberpunk style',
+        size: '1024x1024',
+        style: 'vivid',
+        n: 1,
+    },
+    preferences: { optimizeFor: 'quality' },
+});
+console.log(`Image URL: ${img.result.url}`);
+console.log(`Cost: $${img.costUsd}`);
+```
+
+### curl
+
+```bash
+curl -s "${AIP_ENDPOINT}/v1/intent/execute" \
+  -H "Authorization: Bearer ${AIP_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "intent": "image_generation",
+    "payload": {
+      "prompt": "A futuristic city skyline at sunset, cyberpunk style",
+      "size": "1024x1024",
+      "style": "vivid",
+      "n": 1
+    },
+    "preferences": { "optimize_for": "quality" }
+  }'
+```
+
+---
+
+## 13. Text to Speech — 文字转语音
+
+**场景**: 将文本转化为自然语音音频，支持多种音色和语速设置。
+
+### Python
+
+```python
+response = client.execute(
+    intent="text_to_speech",
+    payload={
+        "text": "Welcome to the Agent Intent Protocol. Let's build the future together.",
+        "voice": "alloy",
+        "speed": 1.0,
+        "format": "mp3",
+    },
+)
+if response.success:
+    print(f"Audio format: {response.result['format']}")
+    print(f"Size: {response.result['size_bytes']} bytes")
+    print(f"Duration: {response.result.get('duration_seconds', 'N/A')}s")
+    # Save audio
+    import base64
+    audio_data = base64.b64decode(response.result["audio_base64"])
+    with open("output.mp3", "wb") as f:
+        f.write(audio_data)
+```
+
+### Go
+
+```go
+tts, err := client.Execute(ctx, &aip.ExecuteRequest{
+    Intent: "text_to_speech",
+    Payload: map[string]any{
+        "text":   "Welcome to the Agent Intent Protocol.",
+        "voice":  "alloy",
+        "speed":  1.0,
+        "format": "mp3",
+    },
+})
+if err == nil {
+    fmt.Printf("Format: %s, Size: %v bytes\n",
+        tts.Result["format"], tts.Result["size_bytes"])
+}
+```
+
+### TypeScript
+
+```typescript
+const tts = await client.execute({
+    intent: 'text_to_speech',
+    payload: {
+        text: 'Welcome to the Agent Intent Protocol.',
+        voice: 'alloy',
+        speed: 1.0,
+        format: 'mp3',
+    },
+});
+console.log(`Format: ${tts.result.format}, Size: ${tts.result.sizeBytes} bytes`);
+// Decode and save
+const buffer = Buffer.from(tts.result.audioBase64, 'base64');
+await fs.writeFile('output.mp3', buffer);
+```
+
+### curl
+
+```bash
+curl -s "${AIP_ENDPOINT}/v1/intent/execute" \
+  -H "Authorization: Bearer ${AIP_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "intent": "text_to_speech",
+    "payload": {
+      "text": "Welcome to the Agent Intent Protocol.",
+      "voice": "alloy",
+      "speed": 1.0,
+      "format": "mp3"
+    }
+  }'
+```
+
+---
+
+## 14. Speech to Text — 语音转文字
+
+**场景**: 将音频文件或 URL 转录为文本，支持多语言识别和时间戳输出。
+
+### Python
+
+```python
+response = client.execute(
+    intent="speech_to_text",
+    payload={
+        "audio_url": "https://example.com/meeting-recording.mp3",
+        "language": "en",
+        "timestamps": True,
+    },
+    optimize_for="quality",
+)
+if response.success:
+    print(f"Transcript: {response.result['text']}")
+    print(f"Language: {response.result['language']}")
+    print(f"Duration: {response.result['duration_seconds']}s")
+    if response.result.get("segments"):
+        for seg in response.result["segments"][:3]:
+            print(f"  [{seg['start']:.1f}s-{seg['end']:.1f}s] {seg['text']}")
+```
+
+### Go
+
+```go
+stt, err := client.Execute(ctx, &aip.ExecuteRequest{
+    Intent: "speech_to_text",
+    Payload: map[string]any{
+        "audio_url":  "https://example.com/meeting-recording.mp3",
+        "language":   "en",
+        "timestamps": true,
+    },
+    Preferences: &aip.Preferences{OptimizeFor: "quality"},
+})
+if err == nil {
+    fmt.Printf("Transcript: %s\n", stt.Result["text"])
+    fmt.Printf("Duration: %vs\n", stt.Result["duration_seconds"])
+}
+```
+
+### TypeScript
+
+```typescript
+const stt = await client.execute({
+    intent: 'speech_to_text',
+    payload: {
+        audioUrl: 'https://example.com/meeting-recording.mp3',
+        language: 'en',
+        timestamps: true,
+    },
+    preferences: { optimizeFor: 'quality' },
+});
+console.log(`Transcript: ${stt.result.text}`);
+console.log(`Duration: ${stt.result.durationSeconds}s`);
+for (const seg of stt.result.segments?.slice(0, 3) ?? []) {
+    console.log(`  [${seg.start}s-${seg.end}s] ${seg.text}`);
+}
+```
+
+### curl
+
+```bash
+curl -s "${AIP_ENDPOINT}/v1/intent/execute" \
+  -H "Authorization: Bearer ${AIP_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "intent": "speech_to_text",
+    "payload": {
+      "audio_url": "https://example.com/meeting-recording.mp3",
+      "language": "en",
+      "timestamps": true
+    },
+    "preferences": { "optimize_for": "quality" }
+  }'
+```
+
+---
+
+## 15. Embedding — 文本向量化
+
+**场景**: 将文本转换为高维向量，用于语义搜索、聚类和推荐系统。
+
+### Python
+
+```python
+response = client.execute(
+    intent="embedding",
+    payload={
+        "input": [
+            "Agent Intent Protocol enables seamless AI routing.",
+            "The quick brown fox jumps over the lazy dog.",
+        ],
+        "model": "text-embedding-3-small",
+        "dimensions": 1536,
+    },
+    optimize_for="cost",
+)
+if response.success:
+    embeddings = response.result["embeddings"]
+    print(f"Generated {len(embeddings)} embeddings")
+    print(f"Dimensions: {len(embeddings[0])}")
+    print(f"Provider: {response.provider}, Cost: ${response.cost_usd}")
+```
+
+### Go
+
+```go
+emb, err := client.Execute(ctx, &aip.ExecuteRequest{
+    Intent: "embedding",
+    Payload: map[string]any{
+        "input": []string{
+            "Agent Intent Protocol enables seamless AI routing.",
+            "The quick brown fox jumps over the lazy dog.",
+        },
+        "model":      "text-embedding-3-small",
+        "dimensions": 1536,
+    },
+    Preferences: &aip.Preferences{OptimizeFor: "cost"},
+})
+if err == nil {
+    embeddings := emb.Result["embeddings"].([]any)
+    fmt.Printf("Generated %d embeddings\n", len(embeddings))
+}
+```
+
+### TypeScript
+
+```typescript
+const emb = await client.execute({
+    intent: 'embedding',
+    payload: {
+        input: [
+            'Agent Intent Protocol enables seamless AI routing.',
+            'The quick brown fox jumps over the lazy dog.',
+        ],
+        model: 'text-embedding-3-small',
+        dimensions: 1536,
+    },
+    preferences: { optimizeFor: 'cost' },
+});
+console.log(`Generated ${emb.result.embeddings.length} embeddings`);
+console.log(`Dimensions: ${emb.result.embeddings[0].length}`);
+```
+
+### curl
+
+```bash
+curl -s "${AIP_ENDPOINT}/v1/intent/execute" \
+  -H "Authorization: Bearer ${AIP_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "intent": "embedding",
+    "payload": {
+      "input": ["Agent Intent Protocol enables seamless AI routing.", "The quick brown fox jumps over the lazy dog."],
+      "model": "text-embedding-3-small",
+      "dimensions": 1536
+    },
+    "preferences": { "optimize_for": "cost" }
+  }'
+```
+
+---
+
+## 16. Web Search — 网页搜索
+
+**场景**: 执行网页搜索并返回结构化结果，支持结果数量和区域设置。
+
+### Python
+
+```python
+response = client.execute(
+    intent="web_search",
+    payload={
+        "query": "Agent Intent Protocol open source",
+        "num_results": 5,
+        "language": "en",
+        "region": "us",
+    },
+    optimize_for="speed",
+)
+if response.success:
+    results = response.result["results"]
+    print(f"Found {len(results)} results:")
+    for r in results:
+        print(f"  - {r['title']}")
+        print(f"    {r['url']}")
+        print(f"    {r['snippet'][:80]}...")
+```
+
+### Go
+
+```go
+search, err := client.Execute(ctx, &aip.ExecuteRequest{
+    Intent: "web_search",
+    Payload: map[string]any{
+        "query":       "Agent Intent Protocol open source",
+        "num_results": 5,
+        "language":    "en",
+    },
+    Preferences: &aip.Preferences{OptimizeFor: "speed"},
+})
+if err == nil {
+    results := search.Result["results"].([]any)
+    fmt.Printf("Found %d results\n", len(results))
+    for _, r := range results {
+        item := r.(map[string]any)
+        fmt.Printf("  - %s\n    %s\n", item["title"], item["url"])
+    }
+}
+```
+
+### TypeScript
+
+```typescript
+const search = await client.execute({
+    intent: 'web_search',
+    payload: {
+        query: 'Agent Intent Protocol open source',
+        numResults: 5,
+        language: 'en',
+        region: 'us',
+    },
+    preferences: { optimizeFor: 'speed' },
+});
+for (const r of search.result.results) {
+    console.log(`- ${r.title}\n  ${r.url}\n  ${r.snippet.slice(0, 80)}...`);
+}
+```
+
+### curl
+
+```bash
+curl -s "${AIP_ENDPOINT}/v1/intent/execute" \
+  -H "Authorization: Bearer ${AIP_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "intent": "web_search",
+    "payload": {
+      "query": "Agent Intent Protocol open source",
+      "num_results": 5,
+      "language": "en",
+      "region": "us"
+    },
+    "preferences": { "optimize_for": "speed" }
+  }'
+```
+
+---
+
+## 17. Code Generation — 代码生成
+
+**场景**: 根据自然语言描述生成代码，支持指定编程语言和上下文。
+
+### Python
+
+```python
+response = client.execute(
+    intent="code_generation",
+    payload={
+        "prompt": "Write a Python function that calculates the Fibonacci sequence using memoization",
+        "language": "python",
+        "max_tokens": 500,
+        "context": "This will be used in a performance-critical application",
+    },
+    optimize_for="quality",
+)
+if response.success:
+    print(f"Generated code:\n{response.result['code']}")
+    print(f"Language: {response.result['language']}")
+    print(f"Tokens used: {response.result.get('usage', {}).get('total_tokens', 'N/A')}")
+    print(f"Provider: {response.provider}, Cost: ${response.cost_usd}")
+```
+
+### Go
+
+```go
+code, err := client.Execute(ctx, &aip.ExecuteRequest{
+    Intent: "code_generation",
+    Payload: map[string]any{
+        "prompt":     "Write a Go function that calculates Fibonacci using memoization",
+        "language":   "go",
+        "max_tokens": 500,
+    },
+    Preferences: &aip.Preferences{OptimizeFor: "quality"},
+})
+if err == nil {
+    fmt.Printf("Generated code:\n%s\n", code.Result["code"])
+    fmt.Printf("Language: %s\n", code.Result["language"])
+}
+```
+
+### TypeScript
+
+```typescript
+const code = await client.execute({
+    intent: 'code_generation',
+    payload: {
+        prompt: 'Write a TypeScript function that calculates Fibonacci using memoization',
+        language: 'typescript',
+        maxTokens: 500,
+        context: 'Performance-critical application',
+    },
+    preferences: { optimizeFor: 'quality' },
+});
+console.log(`Generated code:\n${code.result.code}`);
+console.log(`Language: ${code.result.language}`);
+```
+
+### curl
+
+```bash
+curl -s "${AIP_ENDPOINT}/v1/intent/execute" \
+  -H "Authorization: Bearer ${AIP_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "intent": "code_generation",
+    "payload": {
+      "prompt": "Write a function that calculates Fibonacci using memoization",
+      "language": "python",
+      "max_tokens": 500
+    },
+    "preferences": { "optimize_for": "quality" }
+  }'
+```
+
+---
+
+## 18. 支持的 Intent 类型总览
 
 | Intent 类型 | 说明 | 典型 Payload |
 |------------|------|-------------|
@@ -704,7 +1195,7 @@ curl -s "${AIP_ENDPOINT}/v1/intent/execute" \
 
 ---
 
-## 13. SDK 与独立协议包的关系
+## 19. SDK 与独立协议包的关系
 
 | 包名 | 定位 | AIP 方法 |
 |------|------|----------|
