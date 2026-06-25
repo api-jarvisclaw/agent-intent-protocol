@@ -762,6 +762,33 @@ curl -s "${AIP_ENDPOINT}/v1/intent/execute" \
   }'
 ```
 
+
+### 预期输出
+
+```json
+{
+  "success": true,
+  "intent": "image_generation",
+  "result": {
+    "url": "https://cdn.aip-provider.com/img/abc123.png",
+    "revised_prompt": "A futuristic cyberpunk city skyline bathed in golden sunset light, with neon signs and flying vehicles",
+    "width": 1024,
+    "height": 1024
+  },
+  "provider": "openai/dall-e-3",
+  "cost_usd": 0.040,
+  "latency_ms": 8200
+}
+```
+
+### 好处
+
+- **统一接口，自动路由**：无需分别对接 DALL·E、Midjourney、Stable Diffusion 等不同 API，AIP 根据 preferences 自动选最优 provider
+- **成本透明**：每次请求返回实际 `cost_usd`，可直接用于计费和预算控制
+- **prompt 优化**：provider 返回 `revised_prompt`，让你知道模型实际理解的内容，方便迭代
+- **自动重试与降级**：某 provider 超时或报错时，AIP 网关自动切换到备选 provider，调用方无感知
+- **参数标准化**：`size`、`style`、`n` 等参数跨 provider 统一，不用记各家私有字段名
+
 ---
 
 ## 13. Text to Speech — 文字转语音
@@ -844,6 +871,33 @@ curl -s "${AIP_ENDPOINT}/v1/intent/execute" \
   }'
 ```
 
+
+### 预期输出
+
+```json
+{
+  "success": true,
+  "intent": "text_to_speech",
+  "result": {
+    "audioBase64": "SUQzBAAAAAAAI1RTU0UAAAA...(base64 编码的 MP3 数据)...",
+    "format": "mp3",
+    "sizeBytes": 48256,
+    "durationMs": 3200
+  },
+  "provider": "openai/tts-1",
+  "cost_usd": 0.0045,
+  "latency_ms": 1800
+}
+```
+
+### 好处
+
+- **多音色一键切换**：`voice` 参数统一枚举（alloy/echo/nova/shimmer 等），跨 provider 映射，不用学各家 SDK
+- **格式灵活**：支持 mp3/opus/aac/flac，一个参数搞定，无需额外转码
+- **base64 内联返回**：小音频直接拿 base64 解码使用，无需额外下载步骤；大音频也可请求返回 URL
+- **实时计费**：`cost_usd` 按实际字符数计费，精确到请求级别
+- **低延迟自动选路**：设置 `optimize_for: "latency"` 时自动选响应最快的 TTS provider
+
 ---
 
 ## 14. Speech to Text — 语音转文字
@@ -924,6 +978,37 @@ curl -s "${AIP_ENDPOINT}/v1/intent/execute" \
     "preferences": { "optimize_for": "quality" }
   }'
 ```
+
+
+### 预期输出
+
+```json
+{
+  "success": true,
+  "intent": "speech_to_text",
+  "result": {
+    "text": "Welcome to the Agent Intent Protocol. Let's build the future together.",
+    "language": "en",
+    "confidence": 0.97,
+    "segments": [
+      {"start": 0.0, "end": 1.8, "text": "Welcome to the Agent Intent Protocol."},
+      {"start": 2.0, "end": 3.2, "text": "Let's build the future together."}
+    ],
+    "durationMs": 3200
+  },
+  "provider": "openai/whisper-1",
+  "cost_usd": 0.0019,
+  "latency_ms": 2400
+}
+```
+
+### 好处
+
+- **多格式支持**：直接接收 mp3/wav/webm/m4a 等格式，无需预处理
+- **自动语言检测**：不传 `language` 时自动识别语种，返回检测结果
+- **时间戳对齐**：`segments` 数组提供逐句时间戳，可直接用于字幕生成
+- **置信度评分**：`confidence` 字段让你判断识别质量，低于阈值可要求用户重录
+- **大文件友好**：支持 base64 和 URL 两种输入方式，大文件直接传 URL 避免请求体过大
 
 ---
 
@@ -1009,6 +1094,36 @@ curl -s "${AIP_ENDPOINT}/v1/intent/execute" \
     "preferences": { "optimize_for": "cost" }
   }'
 ```
+
+
+### 预期输出
+
+```json
+{
+  "success": true,
+  "intent": "embedding",
+  "result": {
+    "embeddings": [
+      [0.0023, -0.0134, 0.0271, "...(共 1536 维)"],
+      [-0.0089, 0.0412, -0.0055, "...(共 1536 维)"]
+    ],
+    "model": "text-embedding-3-small",
+    "dimensions": 1536,
+    "tokensUsed": 18
+  },
+  "provider": "openai/embedding",
+  "cost_usd": 0.000004,
+  "latency_ms": 320
+}
+```
+
+### 好处
+
+- **批量处理**：一次请求传多条文本，减少网络往返，吞吐量提升 5-10 倍
+- **维度可选**：通过 `dimensions` 参数控制向量维度，低维节省存储、高维保精度
+- **成本极低**：embedding 是所有 intent 中成本最低的，适合大规模索引构建
+- **provider 透明切换**：今天用 OpenAI，明天换 Cohere 或本地模型，代码零改动
+- **token 用量反馈**：返回 `tokensUsed`，精确追踪配额消耗
 
 ---
 
@@ -1096,6 +1211,45 @@ curl -s "${AIP_ENDPOINT}/v1/intent/execute" \
   }'
 ```
 
+
+### 预期输出
+
+```json
+{
+  "success": true,
+  "intent": "web_search",
+  "result": {
+    "results": [
+      {
+        "title": "Agent Intent Protocol - GitHub",
+        "url": "https://github.com/anthropic/agent-intent-protocol",
+        "snippet": "AIP is a unified protocol for AI agent capabilities including LLM, image generation, TTS, STT, and more.",
+        "score": 0.95
+      },
+      {
+        "title": "AIP Documentation",
+        "url": "https://docs.aip.dev/getting-started",
+        "snippet": "Get started with AIP in 5 minutes. Install the SDK, configure your API key, and make your first intent call.",
+        "score": 0.89
+      }
+    ],
+    "totalResults": 2,
+    "searchEngine": "google"
+  },
+  "provider": "serper/google",
+  "cost_usd": 0.005,
+  "latency_ms": 1100
+}
+```
+
+### 好处
+
+- **Agent 实时信息获取**：让 AI Agent 能访问最新网页内容，不再局限于训练数据截止日期
+- **结构化结果**：返回 title/url/snippet/score 标准化结构，直接可用于 RAG pipeline
+- **搜索引擎抽象**：底层可能是 Google/Bing/Brave，调用方无需关心具体引擎
+- **相关性评分**：`score` 字段帮助你过滤低质量结果，提升下游 LLM 的上下文质量
+- **限定条数**：`max_results` 控制返回数量，避免浪费 token 在无关结果上
+
 ---
 
 ## 17. Code Generation — 代码生成
@@ -1173,6 +1327,33 @@ curl -s "${AIP_ENDPOINT}/v1/intent/execute" \
     "preferences": { "optimize_for": "quality" }
   }'
 ```
+
+
+### 预期输出
+
+```json
+{
+  "success": true,
+  "intent": "code_generation",
+  "result": {
+    "code": "def fibonacci(n: int) -> list[int]:\n    if n <= 0:\n        return []\n    fib = [0, 1]\n    for i in range(2, n):\n        fib.append(fib[-1] + fib[-2])\n    return fib[:n]",
+    "language": "python",
+    "explanation": "迭代方式生成斐波那契数列前 n 项。使用列表存储中间结果，时间复杂度 O(n)，空间复杂度 O(n)。",
+    "tokensUsed": 156
+  },
+  "provider": "anthropic/claude-sonnet",
+  "cost_usd": 0.003,
+  "latency_ms": 2800
+}
+```
+
+### 好处
+
+- **代码与解释分离**：`code` 字段是纯可执行代码，`explanation` 是自然语言说明，方便自动化流水线直接提取代码
+- **语言指定**：通过 `language` 参数确保生成目标语言代码，不会混入其他语言
+- **专业模型路由**：AIP 可将代码任务路由到代码专长模型（如 Claude/GPT-4/CodeLlama），比通用模型质量更高
+- **可直接集成 CI**：返回的 `code` 可直接写文件、跑测试，适合 Agent 自动化开发流程
+- **成本可控**：相比直接用 chat intent 生成代码，code_generation intent 可优化 prompt 模板降低 token 消耗
 
 ---
 
