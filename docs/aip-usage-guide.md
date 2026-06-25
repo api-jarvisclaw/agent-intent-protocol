@@ -470,23 +470,241 @@ for log in audit_logs:
 
 ---
 
-## 9. 支持的 Intent 类型总览
+## 9. Video Generation — 视频生成
+
+**场景**: 根据文本 prompt 生成短视频。
+
+### Python
+
+```python
+response = client.execute(
+    intent="video_generation",
+    payload={
+        "prompt": "A serene lake at sunrise with birds flying overhead",
+        "duration_seconds": 5,
+        "resolution": "1080p",
+    },
+    optimize_for="quality",
+)
+if response.success:
+    print(f"Video URL: {response.result['video_url']}")
+    print(f"Duration: {response.result['duration_seconds']}s")
+    print(f"Cost: ${response.cost_usd}")
+```
+
+### Go
+
+```go
+video, err := client.Execute(ctx, &aip.ExecuteRequest{
+    Intent: "video_generation",
+    Payload: map[string]any{
+        "prompt":           "A serene lake at sunrise with birds flying overhead",
+        "duration_seconds": 5,
+        "resolution":       "1080p",
+    },
+    Preferences: &aip.Preferences{OptimizeFor: "quality"},
+})
+if err == nil {
+    fmt.Printf("Video URL: %s\n", video.Result["video_url"])
+}
+```
+
+### TypeScript
+
+```typescript
+const video = await client.execute({
+    intent: 'video_generation',
+    payload: {
+        prompt: 'A serene lake at sunrise with birds flying overhead',
+        durationSeconds: 5,
+        resolution: '1080p',
+    },
+    preferences: { optimizeFor: 'quality' },
+});
+console.log(`Video URL: ${video.result.videoUrl}`);
+```
+
+### curl
+
+```bash
+curl -s "${AIP_ENDPOINT}/v1/intent/execute" \
+  -H "Authorization: Bearer ${AIP_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "intent": "video_generation",
+    "payload": {
+      "prompt": "A serene lake at sunrise with birds flying overhead",
+      "duration_seconds": 5,
+      "resolution": "1080p"
+    },
+    "preferences": { "optimize_for": "quality" }
+  }'
+```
+
+---
+
+## 10. Moderation — 内容审核
+
+**场景**: 对用户输入进行内容安全审核，检测违规类别。
+
+### Python
+
+```python
+response = client.execute(
+    intent="moderation",
+    payload={
+        "input": "Some user-generated text content to check",
+        "categories": ["hate", "violence", "sexual", "self-harm"],
+    },
+)
+if response.success:
+    results = response.result
+    print(f"Flagged: {results['flagged']}")
+    for cat, score in results['category_scores'].items():
+        if score > 0.5:
+            print(f"  ⚠️ {cat}: {score:.3f}")
+```
+
+### Go
+
+```go
+mod, err := client.Execute(ctx, &aip.ExecuteRequest{
+    Intent: "moderation",
+    Payload: map[string]any{
+        "input":      "Some user-generated text content to check",
+        "categories": []string{"hate", "violence", "sexual", "self-harm"},
+    },
+})
+if err == nil {
+    fmt.Printf("Flagged: %v\n", mod.Result["flagged"])
+}
+```
+
+### TypeScript
+
+```typescript
+const mod = await client.execute({
+    intent: 'moderation',
+    payload: {
+        input: 'Some user-generated text content to check',
+        categories: ['hate', 'violence', 'sexual', 'self-harm'],
+    },
+});
+console.log(`Flagged: ${mod.result.flagged}`);
+for (const [cat, score] of Object.entries(mod.result.categoryScores)) {
+    if ((score as number) > 0.5) console.log(`  ⚠️ ${cat}: ${score}`);
+}
+```
+
+### curl
+
+```bash
+curl -s "${AIP_ENDPOINT}/v1/intent/execute" \
+  -H "Authorization: Bearer ${AIP_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "intent": "moderation",
+    "payload": {
+      "input": "Some user-generated text content to check",
+      "categories": ["hate", "violence", "sexual", "self-harm"]
+    }
+  }'
+```
+
+---
+
+## 11. Translation — 文本翻译
+
+**场景**: 将文本从一种语言翻译为另一种语言。
+
+### Python
+
+```python
+response = client.execute(
+    intent="translation",
+    payload={
+        "text": "The agent intent protocol enables seamless AI service routing.",
+        "source_lang": "en",
+        "target_lang": "zh",
+    },
+    optimize_for="quality",
+)
+if response.success:
+    print(f"Translation: {response.result['translated_text']}")
+    print(f"Provider: {response.provider}, Cost: ${response.cost_usd}")
+```
+
+### Go
+
+```go
+tr, err := client.Execute(ctx, &aip.ExecuteRequest{
+    Intent: "translation",
+    Payload: map[string]any{
+        "text":        "The agent intent protocol enables seamless AI service routing.",
+        "source_lang": "en",
+        "target_lang": "zh",
+    },
+    Preferences: &aip.Preferences{OptimizeFor: "quality"},
+})
+if err == nil {
+    fmt.Printf("Translation: %s\n", tr.Result["translated_text"])
+}
+```
+
+### TypeScript
+
+```typescript
+const tr = await client.execute({
+    intent: 'translation',
+    payload: {
+        text: 'The agent intent protocol enables seamless AI service routing.',
+        sourceLang: 'en',
+        targetLang: 'zh',
+    },
+    preferences: { optimizeFor: 'quality' },
+});
+console.log(`Translation: ${tr.result.translatedText}`);
+```
+
+### curl
+
+```bash
+curl -s "${AIP_ENDPOINT}/v1/intent/execute" \
+  -H "Authorization: Bearer ${AIP_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "intent": "translation",
+    "payload": {
+      "text": "The agent intent protocol enables seamless AI service routing.",
+      "source_lang": "en",
+      "target_lang": "zh"
+    },
+    "preferences": { "optimize_for": "quality" }
+  }'
+```
+
+---
+
+## 12. 支持的 Intent 类型总览
 
 | Intent 类型 | 说明 | 典型 Payload |
 |------------|------|-------------|
 | `chat_completion` | LLM 对话补全 | `messages`, `max_tokens`, `temperature` |
 | `web_search` | 网页搜索 | `query`, `num_results` |
 | `image_generation` | 图片生成 | `prompt`, `size`, `style` |
+| `video_generation` | 视频生成 | `prompt`, `duration_seconds`, `resolution` |
 | `text_to_speech` | 文字转语音 | `text`, `voice`, `speed` |
+| `speech_to_text` | 语音转文字 | `audio_url`, `language` |
 | `embedding` | 文本向量化 | `input`, `model` |
-| `code_completion` | 代码补全 | `prompt`, `language` |
-| `transcription` | 语音转文字 | `audio_url`, `language` |
+| `code_generation` | 代码生成 | `prompt`, `language`, `max_tokens` |
+| `moderation` | 内容审核 | `input`, `categories` |
+| `translation` | 文本翻译 | `text`, `source_lang`, `target_lang` |
 
 > 使用 `client.list_intents()` 可实时获取最新支持列表。
 
 ---
 
-## 10. SDK 与独立协议包的关系
+## 13. SDK 与独立协议包的关系
 
 | 包名 | 定位 | AIP 方法 |
 |------|------|----------|
@@ -507,6 +725,7 @@ for log in audit_logs:
 | Execute | POST | `/v1/intent/execute` |
 | Subscribe (SSE) | POST | `/v1/intent/subscribe` |
 | Discover | GET | `/v1/intent/discover` |
+| Health | GET | `/v1/intent/health` |
 | Audit | GET | `/v1/intent/audit` |
 
 ---
