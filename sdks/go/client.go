@@ -15,12 +15,18 @@ package aip
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"strconv"
 	"time"
+
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 const (
@@ -34,6 +40,7 @@ const (
 type Client struct {
 	endpoint   string
 	apiKey     string
+	privateKey *ecdsa.PrivateKey
 	httpClient *http.Client
 }
 
@@ -61,7 +68,17 @@ func WithTimeout(d time.Duration) Option {
 	}
 }
 
-// NewClient creates a new AIP client.
+// WithPrivateKey sets a hex-encoded Ethereum private key for wallet auth (EIP-191).
+func WithPrivateKey(hexKey string) Option {
+	return func(c *Client) {
+		key, err := crypto.HexToECDSA(hexKey)
+		if err == nil {
+			c.privateKey = key
+		}
+	}
+}
+
+// NewClient creates a new AIP client with an explicit API key.
 func NewClient(apiKey string, opts ...Option) *Client {
 	c := &Client{
 		endpoint: DefaultEndpoint,
@@ -70,6 +87,46 @@ func NewClient(apiKey string, opts ...Option) *Client {
 			Timeout: DefaultTimeout,
 		},
 	}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c
+}
+
+// NewClientFromEnv creates a client using environment variables.
+// Priority: JARVISCLAW_API_KEY > AIP_API_KEY for api_key,
+// JARVISCLAW_PRIVATE_KEY > AIP_PRIVATE_KEY for wallet auth.
+// AIP_ENDPOINT overrides the default endpoint.
+func NewClientFromEnv(opts ...Option) *Client {
+	apiKey := os.Getenv("JARVISCLAW_API_KEY")
+	if apiKey == "" {
+		apiKey = os.Getenv("AIP_API_KEY")
+	}
+
+	c := &Client{
+		endpoint: DefaultEndpoint,
+		apiKey:   apiKey,
+		httpClient: &http.Client{
+			Timeout: DefaultTimeout,
+		},
+	}
+
+	// Private key from env
+	pk := os.Getenv("JARVISCLAW_PRIVATE_KEY")
+	if pk == "" {
+		pk = os.Getenv("AIP_PRIVATE_KEY")
+	}
+	if pk != "" {
+		if key, err := crypto.HexToECDSA(pk); err == nil {
+			c.privateKey = key
+		}
+	}
+
+	// Endpoint override
+	if ep := os.Getenv("AIP_ENDPOINT"); ep != "" {
+		c.endpoint = ep
+	}
+
 	for _, opt := range opts {
 		opt(c)
 	}
@@ -241,7 +298,7 @@ func (c *Client) post(ctx context.Context, path string, body any, result any) er
 		return fmt.Errorf("aip: create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	c.setAuth(req)
 
 	return c.do(req, result)
 }
@@ -256,9 +313,29 @@ func (c *Client) get(ctx context.Context, path string, params url.Values, result
 	if err != nil {
 		return fmt.Errorf("aip: create request: %w", err)
 	}
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	c.setAuth(req)
 
 	return c.do(req, result)
+}
+
+// setAuth applies authentication headers to the request.
+// If privateKey is set, uses EIP-191 wallet signature.
+// Otherwise falls back to Bearer token with apiKey.
+func (c *Client) setAuth(req *http.Request) {
+	if c.privateKey != nil {
+		timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+		message := "aip-auth:" + timestamp
+		hash := crypto.Keccak256Hash([]byte(fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(message), message)))
+		sig, err := crypto.Sign(hash.Bytes(), c.privateKey)
+		if err == nil {
+			address := crypto.PubkeyToAddress(c.privateKey.PublicKey)
+			req.Header.Set("X-Wallet-Address", address.Hex())
+			req.Header.Set("X-Timestamp", timestamp)
+			req.Header.Set("X-Signature", hex.EncodeToString(sig))
+		}
+	} else if c.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	}
 }
 
 func (c *Client) do(req *http.Request, result any) error {

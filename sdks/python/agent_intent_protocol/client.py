@@ -63,20 +63,41 @@ class AIPClient:
     def __init__(
         self,
         api_key: str | None = None,
+        private_key: str | None = None,
         endpoint: str | None = None,
         timeout: float = 60.0,
     ):
         """
         Initialize the AIP client.
 
+        Supports two authentication modes:
+            1. API Key: pass api_key or set JARVISCLAW_API_KEY / AIP_API_KEY env var
+            2. Wallet Private Key: pass private_key or set AIP_PRIVATE_KEY env var
+               (uses EIP-191 signature for each request)
+
         Args:
-            api_key: API key for authentication. Falls back to AIP_API_KEY env var.
+            api_key: API key for authentication. Falls back to JARVISCLAW_API_KEY
+                     or AIP_API_KEY env var (checked in that order).
+            private_key: Hex-encoded wallet private key for signature auth.
+                         Falls back to AIP_PRIVATE_KEY env var.
             endpoint: Platform URL. Defaults to https://api.jarvisclaw.ai
             timeout: Request timeout in seconds.
         """
         self.endpoint = (endpoint or os.getenv("AIP_ENDPOINT", DEFAULT_ENDPOINT)).rstrip("/")
-        self.api_key = api_key or os.getenv("AIP_API_KEY", "")
+        # Unified env var: prefer JARVISCLAW_API_KEY, fall back to AIP_API_KEY
+        self.api_key = api_key or os.getenv("JARVISCLAW_API_KEY") or os.getenv("AIP_API_KEY", "")
+        self.private_key = private_key or os.getenv("AIP_PRIVATE_KEY", "")
         self.timeout = timeout
+
+        # Validate: at least one auth method should be provided
+        if not self.api_key and not self.private_key:
+            import warnings
+            warnings.warn(
+                "No authentication configured. Set api_key/private_key or "
+                "JARVISCLAW_API_KEY/AIP_PRIVATE_KEY environment variable.",
+                stacklevel=2,
+            )
+
         self._client = httpx.Client(
             base_url=self.endpoint,
             timeout=timeout,
@@ -84,13 +105,54 @@ class AIPClient:
         )
 
     def _headers(self) -> dict[str, str]:
-        h: dict[str, str] = {
+        """Static headers for all requests."""
+        return {
             "User-Agent": f"aip-python/{__version__}",
             "Content-Type": "application/json",
         }
+
+    def _auth_headers(self) -> dict[str, str]:
+        """
+        Generate per-request authentication headers.
+
+        If api_key is set, uses Bearer token auth.
+        If private_key is set (and no api_key), uses EIP-191 wallet signature.
+        """
         if self.api_key:
-            h["Authorization"] = f"Bearer {self.api_key}"
-        return h
+            return {"Authorization": f"Bearer {self.api_key}"}
+
+        if self.private_key:
+            return self._wallet_sign_headers()
+
+        return {}
+
+    def _wallet_sign_headers(self) -> dict[str, str]:
+        """
+        Generate EIP-191 signature headers for wallet-based authentication.
+
+        Requires eth_account package: pip install eth_account
+        """
+        try:
+            from eth_account import Account
+            from eth_account.messages import encode_defunct
+        except ImportError:
+            raise ImportError(
+                "Wallet authentication requires eth_account. "
+                "Install it with: pip install eth-account"
+            )
+
+        import time
+        timestamp = str(int(time.time()))
+        message = f"aip-auth:{timestamp}"
+        msg = encode_defunct(text=message)
+        signed = Account.sign_message(msg, private_key=self.private_key)
+        address = Account.from_key(self.private_key).address
+
+        return {
+            "X-Wallet-Address": address,
+            "X-Timestamp": timestamp,
+            "X-Signature": signed.signature.hex(),
+        }
 
     # ─── Core: Resolve ─────────────────────────────────────────────────────
 
@@ -301,17 +363,17 @@ class AIPClient:
     # ─── HTTP Layer ────────────────────────────────────────────────────────
 
     def _post(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
-        resp = self._client.post(path, json=body)
+        resp = self._client.post(path, json=body, headers=self._auth_headers())
         return self._handle_response(resp)
 
     def _post_stream(self, path: str, body: dict[str, Any]) -> httpx.Response:
-        resp = self._client.post(path, json=body)
+        resp = self._client.post(path, json=body, headers=self._auth_headers())
         if resp.status_code >= 400:
             self._raise_error(resp)
         return resp
 
     def _get(self, path: str, params: dict[str, str] | None = None) -> dict[str, Any]:
-        resp = self._client.get(path, params=params)
+        resp = self._client.get(path, params=params, headers=self._auth_headers())
         return self._handle_response(resp)
 
     def _handle_response(self, resp: httpx.Response) -> dict[str, Any]:
