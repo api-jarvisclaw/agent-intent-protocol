@@ -1,4 +1,4 @@
-"""Pay-per-request AI access with agent-intent-x402.
+"""Pay-per-request AI access with agent-intent-protocol.
 
 Your agent carries a wallet. The gateway quotes a price via HTTP 402.
 The SDK signs and settles on-chain automatically — no accounts, no
@@ -10,7 +10,7 @@ Run::
     python examples/basic_usage.py
 """
 
-from agent_intent_x402 import AIPClient, IntentType, OptimizeFor, Wallet
+from agent_intent_protocol import AIPClient, IntentType, OptimizeFor, Wallet
 
 
 def main() -> None:

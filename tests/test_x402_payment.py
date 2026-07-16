@@ -20,7 +20,7 @@ import json
 import httpx
 import pytest
 
-from agent_intent_x402 import AIPClient, AsyncAIPClient, Wallet
+from agent_intent_protocol import AIPClient, AsyncAIPClient, Wallet
 
 # A deterministic throwaway key. Never used on any real network.
 TEST_PRIVATE_KEY = "0x" + "11" * 32
@@ -103,7 +103,7 @@ def test_sync_402_without_wallet_raises():
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(402, json=_challenge_body())
 
-    from agent_intent_x402 import AIPPaymentRequiredError
+    from agent_intent_protocol import AIPPaymentRequiredError
 
     transport = httpx.MockTransport(handler)
     http = httpx.Client(transport=transport)
@@ -154,7 +154,7 @@ async def test_async_402_challenge_is_signed_and_retried():
 
 @pytest.mark.asyncio
 async def test_async_402_without_wallet_raises():
-    from agent_intent_x402 import AIPPaymentRequiredError
+    from agent_intent_protocol import AIPPaymentRequiredError
 
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(402, json=_challenge_body())

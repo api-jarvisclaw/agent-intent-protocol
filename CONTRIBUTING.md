@@ -19,8 +19,8 @@ correctness are especially welcome.
 ## Development setup
 
 ```bash
-git clone https://github.com/api-jarvisclaw/agent-intent-x402
-cd agent-intent-x402
+git clone https://github.com/api-jarvisclaw/agent-intent-protocol
+cd agent-intent-protocol
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 ```

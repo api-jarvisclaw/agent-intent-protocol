@@ -8,7 +8,7 @@ without trusting (or even contacting) the issuer:
 * :func:`verify_settlement` — confirm the payment on-chain via public RPC.
 * :func:`canonicalize` / :func:`sha256_hex` — the independent canonicalizer.
 
-It shares no code with the issuer's ``agent_intent_x402`` package.
+It shares no code with the issuer's ``agent_intent_protocol`` package.
 """
 
 from .canonical import canonicalize, sha256_hex, signable_bytes

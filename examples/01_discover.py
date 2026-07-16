@@ -13,7 +13,7 @@ Point it at any AIP-compatible gateway with AIP_ENDPOINT:
 
 import os
 
-from agent_intent_x402 import AIPClient
+from agent_intent_protocol import AIPClient
 
 
 def main() -> None:

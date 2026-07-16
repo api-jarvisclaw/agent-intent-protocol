@@ -12,7 +12,7 @@ accept plain dicts, so you never have to import a config class to get started.
 
 import os
 
-from agent_intent_x402 import AIPClient
+from agent_intent_protocol import AIPClient
 
 
 def main() -> None:

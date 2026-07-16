@@ -33,10 +33,10 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(
-    0, str(Path(__file__).resolve().parents[2] / "agent_intent_x402" / "..")
+    0, str(Path(__file__).resolve().parents[2] / "agent_intent_protocol" / "..")
 )
 
-from agent_intent_x402.receipt import (  # noqa: E402
+from agent_intent_protocol.receipt import (  # noqa: E402
     EvmSigner,
     build_receipt,
     sign_receipt,

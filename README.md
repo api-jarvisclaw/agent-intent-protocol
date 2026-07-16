@@ -1,8 +1,8 @@
-# agent-intent-x402
+# agent-intent-protocol
 
-[![CI](https://github.com/api-jarvisclaw/agent-intent-x402/actions/workflows/ci.yml/badge.svg)](https://github.com/api-jarvisclaw/agent-intent-x402/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/agent-intent-x402.svg)](https://pypi.org/project/agent-intent-x402/)
-[![Python](https://img.shields.io/pypi/pyversions/agent-intent-x402.svg)](https://pypi.org/project/agent-intent-x402/)
+[![CI](https://github.com/api-jarvisclaw/agent-intent-protocol/actions/workflows/ci.yml/badge.svg)](https://github.com/api-jarvisclaw/agent-intent-protocol/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/agent-intent-protocol.svg)](https://pypi.org/project/agent-intent-protocol/)
+[![Python](https://img.shields.io/pypi/pyversions/agent-intent-protocol.svg)](https://pypi.org/project/agent-intent-protocol/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-informational.svg)](LICENSE)
 [![x402](https://img.shields.io/badge/protocol-x402-8A2BE2.svg)](https://x402.org)
 
@@ -23,7 +23,7 @@ against any compliant gateway.
 - **Base and Solana** — `secp256k1`/EIP-191 for EVM chains, `ed25519` for Solana. On EVM, payments sign EIP-712 (EIP-3009) and receipts sign EIP-191, from the same key.
 
 ```bash
-pip install agent-intent-x402
+pip install agent-intent-protocol
 ```
 
 Jump straight to [runnable examples](examples/), or read on for the guided tour.
@@ -34,7 +34,7 @@ Give the client a wallet and it settles `402` challenges automatically —
 sign the payment, retry the request, return the result.
 
 ```python
-from agent_intent_x402 import AIPClient, Wallet, IntentType
+from agent_intent_protocol import AIPClient, Wallet, IntentType
 
 wallet = Wallet(private_key="0x...")   # your agent's EVM key
 
@@ -139,7 +139,7 @@ the party that issued it*. No callback to the issuer, no shared secret,
 just the receipt bytes and public-key math.
 
 ```python
-from agent_intent_x402 import verify_receipt
+from agent_intent_protocol import verify_receipt
 
 result = verify_receipt(receipt, intent=intent, result=response)
 if result.valid:

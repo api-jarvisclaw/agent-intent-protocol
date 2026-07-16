@@ -2,7 +2,7 @@
 
 Declare an intent, discover a provider, and pay for the request on-chain
 over the open `x402 <https://x402.org>`_ protocol. When the client is
-given a :class:`~agent_intent_x402.wallet.Wallet`, any HTTP 402 challenge
+given a :class:`~agent_intent_protocol.wallet.Wallet`, any HTTP 402 challenge
 is answered automatically: the wallet signs the payment and the request
 is retried with a ``PAYMENT-SIGNATURE`` header — no accounts, no API keys.
 
@@ -11,7 +11,7 @@ for convenience but can point at any compliant x402 service.
 
 Example::
 
-    from agent_intent_x402 import AIPClient, IntentType, OptimizeFor, Wallet
+    from agent_intent_protocol import AIPClient, IntentType, OptimizeFor, Wallet
 
     wallet = Wallet(private_key="0x...")
     client = AIPClient(wallet=wallet)
@@ -79,7 +79,7 @@ class AIPClient:
         api_key: Optional bearer token for gateways that still use API-key
             auth. Falls back to the ``JARVISCLAW_API_KEY`` environment
             variable. Not required when paying with a wallet.
-        wallet: A :class:`~agent_intent_x402.wallet.Wallet`. When set, HTTP
+        wallet: A :class:`~agent_intent_protocol.wallet.Wallet`. When set, HTTP
             402 responses are answered automatically by signing the payment
             and retrying with a ``PAYMENT-SIGNATURE`` header.
         endpoint: Base URL of the gateway. Defaults to a hosted service;
@@ -120,7 +120,7 @@ class AIPClient:
     def _headers(self) -> dict[str, str]:
         headers = {
             "Content-Type": "application/json",
-            "User-Agent": f"agent-intent-x402/{__version__}",
+            "User-Agent": f"agent-intent-protocol/{__version__}",
         }
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"

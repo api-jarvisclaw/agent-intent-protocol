@@ -1,6 +1,6 @@
 """x402 wallet — sign HTTP 402 payment challenges with an EVM private key.
 
-This is the core of ``agent-intent-x402``: it lets an agent pay for a
+This is the core of ``agent-intent-protocol``: it lets an agent pay for a
 request over the open `x402 <https://x402.org>`_ protocol without any
 platform-specific glue. Given a 402 challenge, the wallet builds and
 signs an EIP-712 ``TransferWithAuthorization`` (EIP-3009) message and
@@ -11,7 +11,7 @@ The signing is vendor-neutral: it targets the standard USDC
 so the same wallet works against any compliant x402 gateway, not just one
 platform.
 
-    from agent_intent_x402 import Wallet
+    from agent_intent_protocol import Wallet
 
     wallet = Wallet(private_key="0x...")
     header = wallet.sign_challenge(challenge)  # PAYMENT-SIGNATURE value
@@ -47,7 +47,7 @@ def _import_eth_account() -> Any:
     except ImportError as exc:  # pragma: no cover - exercised via message only
         raise WalletError(
             "x402 payment requires the 'eth-account' package. "
-            "Install it with: pip install 'agent-intent-x402[wallet]'"
+            "Install it with: pip install 'agent-intent-protocol[wallet]'"
         ) from exc
     return Account
 

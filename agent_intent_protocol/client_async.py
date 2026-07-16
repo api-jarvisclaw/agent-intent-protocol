@@ -1,18 +1,18 @@
 """Asynchronous Agent Intent client with built-in x402 payment.
 
-This is the ``asyncio`` mirror of :class:`agent_intent_x402.client.AIPClient`.
+This is the ``asyncio`` mirror of :class:`agent_intent_protocol.client.AIPClient`.
 It exposes the same protocol methods with identical semantics — declare an
 intent, discover a provider, and settle on-chain over the open
 `x402 <https://x402.org>`_ protocol — but every network call is awaitable.
 
-When the client is given a :class:`~agent_intent_x402.wallet.Wallet`, any
+When the client is given a :class:`~agent_intent_protocol.wallet.Wallet`, any
 HTTP 402 challenge is answered automatically: the wallet signs the payment
 and the request is retried once with a ``PAYMENT-SIGNATURE`` header.
 
 Example::
 
     import asyncio
-    from agent_intent_x402 import AsyncAIPClient, IntentType, Wallet
+    from agent_intent_protocol import AsyncAIPClient, IntentType, Wallet
 
     async def main():
         async with AsyncAIPClient(wallet=Wallet(private_key="0x...")) as client:
@@ -58,7 +58,7 @@ from .wallet import Wallet
 class AsyncAIPClient:
     """Asynchronous client with built-in x402 payment.
 
-    Mirrors :class:`~agent_intent_x402.client.AIPClient` method-for-method;
+    Mirrors :class:`~agent_intent_protocol.client.AIPClient` method-for-method;
     every protocol call is a coroutine. See the sync client for full
     argument documentation.
 
@@ -66,7 +66,7 @@ class AsyncAIPClient:
         api_key: Optional bearer token for gateways that still use API-key
             auth. Falls back to the ``JARVISCLAW_API_KEY`` environment
             variable. Not required when paying with a wallet.
-        wallet: A :class:`~agent_intent_x402.wallet.Wallet`. When set, HTTP
+        wallet: A :class:`~agent_intent_protocol.wallet.Wallet`. When set, HTTP
             402 responses are answered automatically by signing the payment
             and retrying with a ``PAYMENT-SIGNATURE`` header.
         endpoint: Base URL of the gateway. Defaults to a hosted service;
@@ -106,7 +106,7 @@ class AsyncAIPClient:
     def _headers(self) -> dict[str, str]:
         headers = {
             "Content-Type": "application/json",
-            "User-Agent": f"agent-intent-x402/{__version__}",
+            "User-Agent": f"agent-intent-protocol/{__version__}",
         }
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"

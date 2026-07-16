@@ -2,7 +2,7 @@
 
 This verifier is a *second implementation* of the AIR/1 verification
 procedure, written against the specification and deliberately sharing no code
-with the issuer's ``agent_intent_x402`` package. A federation node runs this
+with the issuer's ``agent_intent_protocol`` package. A federation node runs this
 to answer one question for itself:
 
     "Given only a receipt (and optionally the original intent/result), is this

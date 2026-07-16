@@ -16,7 +16,7 @@ environment and never hard-coded.
 import os
 import sys
 
-from agent_intent_x402 import AIPClient, Wallet
+from agent_intent_protocol import AIPClient, Wallet
 
 
 def main() -> None:

@@ -15,7 +15,7 @@ Swap ``EvmSigner`` for ``SolanaSigner`` to issue the ed25519 (Solana) suite —
 the receipt body is identical, only ``signature.algorithm`` changes.
 """
 
-from agent_intent_x402 import (
+from agent_intent_protocol import (
     EvmSigner,
     build_receipt,
     sign_receipt,

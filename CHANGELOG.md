@@ -34,9 +34,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.1.0]
 
 ### Added
-- Initial release of the `agent-intent-x402` client.
+- Initial release of the `agent-intent-protocol` client.
 
-[Unreleased]: https://github.com/api-jarvisclaw/agent-intent-x402/compare/v0.3.0...HEAD
-[0.3.0]: https://github.com/api-jarvisclaw/agent-intent-x402/releases/tag/v0.3.0
-[0.2.0]: https://github.com/api-jarvisclaw/agent-intent-x402/releases/tag/v0.2.0
-[0.1.0]: https://github.com/api-jarvisclaw/agent-intent-x402/releases/tag/v0.1.0
+[Unreleased]: https://github.com/api-jarvisclaw/agent-intent-protocol/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/api-jarvisclaw/agent-intent-protocol/releases/tag/v0.3.0
+[0.2.0]: https://github.com/api-jarvisclaw/agent-intent-protocol/releases/tag/v0.2.0
+[0.1.0]: https://github.com/api-jarvisclaw/agent-intent-protocol/releases/tag/v0.1.0

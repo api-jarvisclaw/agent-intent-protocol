@@ -1,11 +1,11 @@
-"""agent-intent-x402 — pay-per-request access for AI agents over x402.
+"""agent-intent-protocol — pay-per-request access for AI agents over x402.
 
 Declare *what* you want, discover *who* provides it, and pay for the
 request on-chain with a single signature — no accounts, no API keys, no
 platform lock-in. Payment speaks the open `x402 <https://x402.org>`_
 protocol, so the same client works against any compliant gateway.
 
-    from agent_intent_x402 import AIPClient, IntentType, Wallet
+    from agent_intent_protocol import AIPClient, IntentType, Wallet
 
     # A wallet lets the client answer HTTP 402 challenges automatically.
     wallet = Wallet(private_key="0x...")

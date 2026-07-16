@@ -8,7 +8,7 @@ keys. Security reports are taken seriously.
 **Do not open a public issue for security problems.**
 
 Report privately through GitHub's
-[private vulnerability reporting](https://github.com/api-jarvisclaw/agent-intent-x402/security/advisories/new),
+[private vulnerability reporting](https://github.com/api-jarvisclaw/agent-intent-protocol/security/advisories/new),
 or email the maintainers at **dev@jarvisclaw.ai**.
 
 Please include:

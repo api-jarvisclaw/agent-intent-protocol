@@ -37,7 +37,7 @@ for _p in (str(_REPO_ROOT), str(_FEDERATION)):
         sys.path.insert(0, _p)
 
 # Issuer side (the code under audit).
-from agent_intent_x402.receipt import (  # noqa: E402
+from agent_intent_protocol.receipt import (  # noqa: E402
     EvmSigner,
     build_receipt,
     sign_receipt,

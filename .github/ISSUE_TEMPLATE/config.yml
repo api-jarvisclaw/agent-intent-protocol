@@ -1,7 +1,7 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/api-jarvisclaw/agent-intent-x402/security/advisories/new
+    url: https://github.com/api-jarvisclaw/agent-intent-protocol/security/advisories/new
     about: Report signing, payment, or key-handling issues privately. Do not open a public issue.
   - name: Protocol specification
     url: https://github.com/api-jarvisclaw/agent-intent-protocol

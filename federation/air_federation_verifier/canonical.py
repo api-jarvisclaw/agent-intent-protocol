@@ -2,7 +2,7 @@
 
 This module is written *from the specification*
 (draft-air-agent-intent-receipt-00, "Canonical Serialization") and shares no
-code with the issuer's ``agent_intent_x402.receipt`` module. If a receipt
+code with the issuer's ``agent_intent_protocol.receipt`` module. If a receipt
 signed by the issuer verifies against bytes produced here, then two
 independent implementations agree on the signable payload byte-for-byte,
 which is the whole point of an offline-verifiable, federated receipt.

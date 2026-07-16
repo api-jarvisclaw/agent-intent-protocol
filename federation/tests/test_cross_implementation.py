@@ -4,7 +4,7 @@ The whole claim of AIR/1 is "you don't have to trust the issuer — verify it
 yourself with your own code". These tests prove that literally:
 
 * a receipt is *signed* by the issuer's implementation
-  (``agent_intent_x402.receipt``), and
+  (``agent_intent_protocol.receipt``), and
 * *verified* by the independent federation verifier
   (``air_federation_verifier``),
 
@@ -33,7 +33,7 @@ for _p in (str(_REPO_ROOT), str(_FEDERATION)):
         sys.path.insert(0, _p)
 
 # Issuer side (the code under audit).
-from agent_intent_x402.receipt import (  # noqa: E402
+from agent_intent_protocol.receipt import (  # noqa: E402
     build_receipt,
     sign_receipt,
 )
@@ -78,8 +78,8 @@ def _make_signed(signer):
 # The two canonicalizers must agree byte-for-byte, or nothing else holds.
 # --------------------------------------------------------------------------
 def test_canonicalization_matches_issuer():
-    from agent_intent_x402.receipt import canonicalize as issuer_canon
-    from agent_intent_x402.receipt import hash_object as issuer_hash
+    from agent_intent_protocol.receipt import canonicalize as issuer_canon
+    from agent_intent_protocol.receipt import hash_object as issuer_hash
 
     sample = {"b": 1, "a": [3, 2, {"z": True, "y": 2.0}], "c": "münchen"}
     assert canonicalize(sample) == issuer_canon(sample)
@@ -91,7 +91,7 @@ def test_canonicalization_matches_issuer():
 # --------------------------------------------------------------------------
 def test_evm_receipt_verifies_independently():
     pytest.importorskip("eth_account")
-    from agent_intent_x402.receipt import EvmSigner
+    from agent_intent_protocol.receipt import EvmSigner
 
     signer = EvmSigner.generate()
     receipt = _make_signed(signer)
@@ -112,7 +112,7 @@ def test_evm_receipt_verifies_independently():
 # --------------------------------------------------------------------------
 def test_solana_receipt_verifies_independently():
     pytest.importorskip("nacl")
-    from agent_intent_x402.receipt import SolanaSigner
+    from agent_intent_protocol.receipt import SolanaSigner
 
     signer = SolanaSigner.generate()
     receipt = _make_signed(signer)
@@ -131,7 +131,7 @@ def test_solana_receipt_verifies_independently():
 # --------------------------------------------------------------------------
 def test_tampered_result_hash_fails():
     pytest.importorskip("eth_account")
-    from agent_intent_x402.receipt import EvmSigner
+    from agent_intent_protocol.receipt import EvmSigner
 
     receipt = _make_signed(EvmSigner.generate())
     receipt["result_hash"] = "0" * 64  # attacker rewrites the result hash
@@ -143,7 +143,7 @@ def test_tampered_result_hash_fails():
 
 def test_tampered_body_fails():
     pytest.importorskip("eth_account")
-    from agent_intent_x402.receipt import EvmSigner
+    from agent_intent_protocol.receipt import EvmSigner
 
     receipt = _make_signed(EvmSigner.generate())
     receipt["settlement"]["amount"] = "999.00"  # inflate the amount
@@ -155,7 +155,7 @@ def test_tampered_body_fails():
 
 def test_intent_hash_mismatch_detected():
     pytest.importorskip("eth_account")
-    from agent_intent_x402.receipt import EvmSigner
+    from agent_intent_protocol.receipt import EvmSigner
 
     receipt = _make_signed(EvmSigner.generate())
     wrong_intent = dict(INTENT, query="something else entirely")
@@ -169,7 +169,7 @@ def test_intent_hash_mismatch_detected():
 
 def test_wrong_signer_rejected():
     pytest.importorskip("eth_account")
-    from agent_intent_x402.receipt import EvmSigner
+    from agent_intent_protocol.receipt import EvmSigner
 
     receipt = _make_signed(EvmSigner.generate())
     receipt["signature"]["signer"] = EvmSigner.generate().signer  # swap key

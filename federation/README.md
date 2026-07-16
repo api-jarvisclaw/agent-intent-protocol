@@ -11,7 +11,7 @@ The point of this package is to demonstrate the core promise of AIR/1:
 
 ## Why a second implementation?
 
-The issuer signs receipts with `agent_intent_x402`. This verifier is a
+The issuer signs receipts with `agent_intent_protocol`. This verifier is a
 *separate* codebase that shares **no code** with the issuer. It re-derives the
 canonical signable bytes straight from the specification. If a receipt signed
 by the issuer verifies against bytes produced here, then two independent
@@ -106,7 +106,7 @@ print(settlement.confirmed)
 ## Tests
 
 The test suite proves cross-implementation agreement: receipts are **signed by
-the issuer** (`agent_intent_x402`) and **verified here**, across both signature
+the issuer** (`agent_intent_protocol`) and **verified here**, across both signature
 suites, plus tampering-detection cases.
 
 ```bash

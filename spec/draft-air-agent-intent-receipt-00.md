@@ -20,8 +20,8 @@ venue:
   type: ""
   mail: ""
   arch: ""
-  github: "api-jarvisclaw/agent-intent-x402"
-  latest: "https://github.com/api-jarvisclaw/agent-intent-x402/tree/main/spec"
+  github: "api-jarvisclaw/agent-intent-protocol"
+  latest: "https://github.com/api-jarvisclaw/agent-intent-protocol/tree/main/spec"
 
 author:
  -
@@ -400,7 +400,7 @@ weaker suite than a policy requires.
 
 # Reference Implementation
 
-The `agent_intent_x402.receipt` module of the agent-intent-x402 project
+The `agent_intent_protocol.receipt` module of the agent-intent-protocol project
 implements this specification: `canonicalize`, `hash_object`, `build_receipt`,
 `sign_receipt`, `verify_receipt`, and the `secp256k1-eip191` and `ed25519`
 signer/verifier suites. It is provided for interoperability testing and is not

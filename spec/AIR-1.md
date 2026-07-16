@@ -17,6 +17,6 @@ kramdown-rfc draft-air-agent-intent-receipt-00.md > draft.xml
 xml2rfc draft.xml --text --html        # -> draft.txt, draft.html
 ```
 
-The `agent_intent_x402.receipt` module is the reference implementation of the
+The `agent_intent_protocol.receipt` module is the reference implementation of the
 draft (canonicalization, hashing, the `secp256k1-eip191` and `ed25519` signer
 suites, and verification).
