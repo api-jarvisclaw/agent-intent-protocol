@@ -39,6 +39,8 @@ from .errors import (
 from .models import (
     Constraints,
     IntentType,
+    MarketplaceAPI,
+    MarketplacePage,
     Preferences,
     Provider,
     ResolveResult,
@@ -46,7 +48,7 @@ from .models import (
 from .wallet import Wallet
 
 DEFAULT_ENDPOINT = "https://api.jarvisclaw.ai"
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 _ConstraintsArg = Union[Constraints, dict[str, Any], None]
 _PreferencesArg = Union[Preferences, dict[str, Any], None]
@@ -335,6 +337,136 @@ class AIPClient:
         """
         data = self._request("GET", "/v1/providers")
         return _extract_providers(data)
+
+    # ── API marketplace ────────────────────────────────────────────────
+    #
+    # The intent methods above route a task to whichever provider ranks best.
+    # These three address the same catalogue from the other end: search it,
+    # read one entry's price, call that exact endpoint. Before 0.4.0 the client
+    # had no way to reach it, so 2,720 priced endpoints were invisible to
+    # callers who only had this SDK.
+
+    def search_apis(
+        self,
+        query: Optional[str] = None,
+        *,
+        category: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 50,
+    ) -> MarketplacePage:
+        """Search the API marketplace.
+
+        Args:
+            query: Free-text match over name, description and tags. Omit to
+                page through the whole catalogue.
+            category: Restrict to one category (``search``, ``blockchain``,
+                ``code``, ``image``, ``dns``, ``document``, ``email``, ``geo``,
+                ``ocr``, ``audio``, ``tts``, ``video``, ``storage``,
+                ``utility``, ``qr``, ``web``, ``llm``, ``general``). The
+                returned page carries the live category counts.
+            page: 1-indexed page number.
+            page_size: Results per page.
+
+        Returns:
+            A :class:`MarketplacePage`; iterate it for the entries, read
+            ``.total`` for the size of the filtered catalogue.
+
+        Endpoint: ``GET /api/marketplace/apis`` (free, no authentication).
+        """
+        # The gateway's free-text parameter is `q`; `search` is accepted but
+        # ignored, which silently returns the unfiltered catalogue.
+        params: dict[str, Any] = {"page": page, "page_size": page_size}
+        if query:
+            params["q"] = query
+        if category:
+            params["category"] = category
+        data = self._request("GET", "/api/marketplace/apis", params=params)
+        return MarketplacePage.from_dict(_unwrap(data))
+
+    def get_api(self, ref: Union[str, int]) -> MarketplaceAPI:
+        """Fetch one marketplace entry by slug or numeric resource id.
+
+        Args:
+            ref: The ``slug`` (preferred — it survives an upstream rename) or
+                the ``resource_id``.
+
+        Endpoint: ``GET /api/marketplace/apis/{ref}`` (free, no authentication).
+        """
+        data = self._request("GET", f"/api/marketplace/apis/{ref}")
+        return MarketplaceAPI.from_dict(_unwrap(data))
+
+    def call_api(
+        self,
+        ref: Union[str, int],
+        payload: Optional[dict[str, Any]] = None,
+        *,
+        method: Optional[str] = None,
+    ) -> Any:
+        """Call one marketplace endpoint directly and return its response.
+
+        This is a paid call. With a wallet configured, the ``402`` challenge is
+        signed and the request retried transparently, exactly as for
+        :meth:`execute`. Without one, an :class:`AIPPaymentRequiredError`
+        carries the quote so a caller can decide and retry.
+
+        Args:
+            ref: The entry's ``slug`` or ``resource_id``. Passing the
+                :class:`MarketplaceAPI` itself is also accepted, and is the
+                only form that gets the verb right without a lookup.
+            payload: Parameters forwarded verbatim upstream. Accepted fields
+                differ per endpoint — read them from :meth:`get_api`. Sending
+                nothing returns a quote rather than a result.
+            method: Override the HTTP verb. Rarely needed: passing a
+                ``MarketplaceAPI`` uses the verb the catalogue publishes for it.
+
+        Endpoint: ``{method} /v1/marketplace/api/{ref}``.
+
+        Roughly 45% of the catalogue is ``GET``, so the verb cannot be assumed.
+        On a ``GET`` the payload is sent as the query string, because a GET body
+        is not something every upstream reads.
+        """
+        verb, target = _resolve_call_target(ref, method)
+        path = f"/v1/marketplace/api/{target}"
+        if verb == "GET":
+            return self._request("GET", path, params=payload or None)
+        return self._request(verb, path, json=payload or {})
+
+
+def _resolve_call_target(
+    ref: Any, method: Optional[str]
+) -> tuple[str, Union[str, int]]:
+    """Work out the verb and path segment for a marketplace call.
+
+    A bare slug or id carries no verb, so it defaults to POST; a
+    ``MarketplaceAPI`` carries the one the catalogue published. An explicit
+    ``method`` wins over both.
+    """
+    target: Union[str, int]
+    verb = "POST"
+    if isinstance(ref, MarketplaceAPI):
+        target = ref.slug or ref.resource_id
+        if ref.method:
+            verb = ref.method.upper()
+    else:
+        target = ref
+    if method:
+        verb = method.upper()
+    return verb, target
+
+
+def _unwrap(data: Any) -> dict[str, Any]:
+    """Return the payload of a ``{"success": true, "data": {...}}`` envelope.
+
+    The marketplace routes wrap their payload; the intent routes do not. Rather
+    than assume either, unwrap only when the envelope is actually present, so a
+    gateway that drops it later keeps working.
+    """
+    if isinstance(data, dict):
+        inner = data.get("data")
+        if isinstance(inner, dict) and "success" in data:
+            return inner
+        return data
+    return {}
 
 
 def _extract_providers(data: Any) -> list[Provider]:

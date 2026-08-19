@@ -37,6 +37,8 @@ from .client import (
     _coerce_constraints,
     _coerce_preferences,
     _extract_providers,
+    _resolve_call_target,
+    _unwrap,
     _ConstraintsArg,
     _PreferencesArg,
     __version__,
@@ -49,6 +51,8 @@ from .errors import (
 )
 from .models import (
     IntentType,
+    MarketplaceAPI,
+    MarketplacePage,
     Provider,
     ResolveResult,
 )
@@ -296,3 +300,55 @@ class AsyncAIPClient:
         """
         data = await self._request("GET", "/v1/providers")
         return _extract_providers(data)
+
+    # ── API marketplace ────────────────────────────────────────────────
+    # Async mirrors of the sync methods; see AIPClient for the semantics.
+
+    async def search_apis(
+        self,
+        query: Optional[str] = None,
+        *,
+        category: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 50,
+    ) -> MarketplacePage:
+        """Search the API marketplace.
+
+        Endpoint: ``GET /api/marketplace/apis`` (free, no authentication).
+        """
+        params: dict[str, Any] = {"page": page, "page_size": page_size}
+        if query:
+            params["q"] = query
+        if category:
+            params["category"] = category
+        data = await self._request("GET", "/api/marketplace/apis", params=params)
+        return MarketplacePage.from_dict(_unwrap(data))
+
+    async def get_api(self, ref: Union[str, int]) -> MarketplaceAPI:
+        """Fetch one marketplace entry by slug or numeric resource id.
+
+        Endpoint: ``GET /api/marketplace/apis/{ref}`` (free, no authentication).
+        """
+        data = await self._request("GET", f"/api/marketplace/apis/{ref}")
+        return MarketplaceAPI.from_dict(_unwrap(data))
+
+    async def call_api(
+        self,
+        ref: Union[str, int],
+        payload: Optional[dict[str, Any]] = None,
+        *,
+        method: Optional[str] = None,
+    ) -> Any:
+        """Call one marketplace endpoint directly and return its response.
+
+        Paid. With a wallet configured the ``402`` is signed and retried.
+        Pass a :class:`MarketplaceAPI` to use the verb the catalogue publishes;
+        see :meth:`AIPClient.call_api` for the details.
+
+        Endpoint: ``{method} /v1/marketplace/api/{ref}``.
+        """
+        verb, target = _resolve_call_target(ref, method)
+        path = f"/v1/marketplace/api/{target}"
+        if verb == "GET":
+            return await self._request("GET", path, params=payload or None)
+        return await self._request(verb, path, json=payload or {})

@@ -26,6 +26,8 @@ from .errors import (
 from .models import (
     Constraints,
     IntentType,
+    MarketplaceAPI,
+    MarketplacePage,
     Match,
     OptimizeFor,
     Preferences,
@@ -49,7 +51,7 @@ from .receipt import (
 )
 from .wallet import Wallet, WalletError
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 __all__ = [
     "AIPClient",
@@ -70,6 +72,9 @@ __all__ = [
     "Match",
     "ResolveResult",
     "Provider",
+    # API marketplace
+    "MarketplaceAPI",
+    "MarketplacePage",
     # AIR/1 signed settlement receipts
     "RECEIPT_VERSION",
     "ALG_EVM",
