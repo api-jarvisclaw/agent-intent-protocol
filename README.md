@@ -18,6 +18,7 @@ against any compliant gateway.
 
 - **No accounts, no API keys** — a wallet is the only credential.
 - **Single-signature payments** — sign an [EIP-3009](https://eips.ethereum.org/EIPS/eip-3009) authorization; the gateway settles on-chain, no gas from your side.
+- **Two ways into the catalogue** — 21 [intent types](#intent-types) that resolve a task to a provider for you, or an [API marketplace](#api-marketplace) of 2,700+ individually priced endpoints you pick by name.
 - **Vendor-neutral** — the same client works against any x402-compliant gateway; nothing here is tied to one platform.
 - **Offline-verifiable receipts** — every settlement can return an [AIR/1](#offline-verifiable-receipts) receipt that anyone can verify without trusting the issuer.
 - **Base and Solana** — `secp256k1`/EIP-191 for EVM chains, `ed25519` for Solana. On EVM, payments sign EIP-712 (EIP-3009) and receipts sign EIP-191, from the same key.
@@ -112,10 +113,62 @@ client.list_providers()
 
 ## Intent types
 
-`chat_completion`, `image_generation`, `video_generation`,
-`text_to_speech`, `web_search`, `knowledge_search`,
-`prompt_optimization`, `document_processing`, `utility`,
-`code_execution`, `data_analysis`, `translation`, `code_generation`.
+All 21 the gateway routes:
+
+`audio_generation`, `blockchain`, `chat_completion`, `code_execution`,
+`code_generation`, `data_analysis`, `dns`, `document_processing`, `email`,
+`general`, `geo`, `image_generation`, `knowledge_search`,
+`prompt_optimization`, `storage`, `text_to_speech`, `translation`, `utility`,
+`video_generation`, `web`, `web_search`.
+
+Available as `IntentType` members, or pass the string directly.
+
+## API marketplace
+
+An intent hands provider choice to the gateway. The marketplace is the other
+end of the same catalogue: **2,700+ endpoints you pick by name**, each with a
+price you can read before paying.
+
+```python
+from agent_intent_protocol import AIPClient, Wallet
+
+client = AIPClient()                    # searching is free — no wallet needed
+
+page = client.search_apis("weather")
+print(page.total)                       # matches across the whole catalogue
+for api in page:
+    print(api.name, api.display_price, api.price_unit, api.path)
+
+# Narrow by category; the page carries live per-category counts.
+client.search_apis(category="blockchain")
+client.search_apis()                    # page through everything
+```
+
+Read one entry, then call it:
+
+```python
+api = client.get_api("city-weather")    # by slug, or by numeric resource_id
+print(api.display_price, api.method, api.path)
+
+paid = AIPClient(wallet=Wallet(private_key="0x..."))
+result = paid.call_api(api, {"city": "Tokyo"})     # pass the entry, not just its id
+```
+
+Pass the `MarketplaceAPI` rather than a bare slug when you can: about 45% of the
+catalogue is `GET`, and the entry carries the verb the catalogue published for
+it. A bare slug defaults to `POST`; override with `method=` if you need to. On a
+`GET` the payload is sent as the query string.
+
+`call_api` is billed. With a wallet, the `402` is signed and retried
+transparently; without one, `AIPPaymentRequiredError.body` carries the quote so
+you can decide and retry yourself.
+
+Prefer `slug` over `resource_id` when storing a reference — both address the
+endpoint, but the slug survives an upstream renaming its resource.
+
+Categories: `general`, `search`, `blockchain`, `code`, `dns`, `image`, `llm`,
+`document`, `email`, `web`, `geo`, `ocr`, `video`, `qr`, `utility`, `audio`,
+`storage`, `tts`.
 
 ## Errors
 

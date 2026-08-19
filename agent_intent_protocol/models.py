@@ -17,21 +17,34 @@ class IntentType(str, Enum):
 
     An intent describes *what* an agent wants to accomplish, decoupled
     from *which* provider or model fulfils it.
+
+    The members below are the full set the gateway advertises at
+    ``GET /v1/intent/types``; the list is checked against that endpoint rather
+    than extended by hand, because an enum that lags the gateway silently hides
+    routable intents from callers. Eight were missing before 0.4.0.
     """
 
+    AUDIO_GENERATION = "audio_generation"
+    BLOCKCHAIN = "blockchain"
     CHAT_COMPLETION = "chat_completion"
+    CODE_EXECUTION = "code_execution"
+    CODE_GENERATION = "code_generation"
+    DATA_ANALYSIS = "data_analysis"
+    DNS = "dns"
+    DOCUMENT_PROCESSING = "document_processing"
+    EMAIL = "email"
+    GENERAL = "general"
+    GEO = "geo"
     IMAGE_GENERATION = "image_generation"
-    VIDEO_GENERATION = "video_generation"
-    TEXT_TO_SPEECH = "text_to_speech"
-    WEB_SEARCH = "web_search"
     KNOWLEDGE_SEARCH = "knowledge_search"
     PROMPT_OPTIMIZATION = "prompt_optimization"
-    DOCUMENT_PROCESSING = "document_processing"
-    UTILITY = "utility"
-    CODE_EXECUTION = "code_execution"
-    DATA_ANALYSIS = "data_analysis"
+    STORAGE = "storage"
+    TEXT_TO_SPEECH = "text_to_speech"
     TRANSLATION = "translation"
-    CODE_GENERATION = "code_generation"
+    UTILITY = "utility"
+    VIDEO_GENERATION = "video_generation"
+    WEB = "web"
+    WEB_SEARCH = "web_search"
 
     def __str__(self) -> str:  # allow seamless use as a plain string
         return self.value
@@ -199,3 +212,102 @@ class Provider:
             description=data.get("description"),
             raw=data,
         )
+
+
+@dataclass
+class MarketplaceAPI:
+    """One callable endpoint from the API marketplace catalogue.
+
+    An intent routes to whichever provider the gateway ranks best; a
+    marketplace entry is the opposite end of the same catalogue — a specific
+    endpoint the caller picks by name, at a price it can read before paying.
+
+    ``slug`` is the stable half of the identity: ``resource_id`` also addresses
+    the endpoint, but the slug survives an upstream renaming its resource, so
+    prefer it when storing a reference.
+    """
+
+    resource_id: int
+    name: str
+    slug: Optional[str] = None
+    category: Optional[str] = None
+    description: Optional[str] = None
+    method: str = "POST"
+    # Price for one call in USD. ``price_unit`` says what "one" means — "call"
+    # for most, "token" for the model-backed rows, whose display_price is a
+    # floor rather than the final charge.
+    display_price: Optional[float] = None
+    price_unit: Optional[str] = None
+    service_id: Optional[str] = None
+    server_name: Optional[str] = None
+    tags: Optional[str] = None
+    source: Optional[str] = None
+    call_count: int = 0
+    popular: bool = False
+    raw: dict[str, Any] = field(default_factory=dict)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "MarketplaceAPI":
+        return cls(
+            resource_id=data.get("resource_id", 0),
+            name=data.get("name", ""),
+            slug=data.get("slug"),
+            category=data.get("category"),
+            description=data.get("description"),
+            method=data.get("method", "POST"),
+            display_price=data.get("display_price"),
+            price_unit=data.get("price_unit"),
+            service_id=data.get("service_id"),
+            server_name=data.get("server_name"),
+            tags=data.get("tags"),
+            source=data.get("source"),
+            call_count=data.get("call_count", 0),
+            popular=data.get("popular", False),
+            raw=data,
+        )
+
+    @property
+    def path(self) -> str:
+        """The invocation path for this endpoint.
+
+        Built from the slug when there is one, because that is the form the
+        gateway publishes and the form that outlives a rename.
+        """
+        return f"/v1/marketplace/api/{self.slug or self.resource_id}"
+
+
+@dataclass
+class MarketplacePage:
+    """One page of marketplace results, plus the catalogue-wide totals.
+
+    ``total`` is the size of the *filtered* catalogue, not of this page, so a
+    caller can tell "9 audio APIs exist" from "9 were returned".
+    """
+
+    items: list[MarketplaceAPI] = field(default_factory=list)
+    total: int = 0
+    page: int = 1
+    page_size: int = 0
+    categories: list[dict[str, Any]] = field(default_factory=list)
+    raw: dict[str, Any] = field(default_factory=dict)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "MarketplacePage":
+        return cls(
+            items=[
+                MarketplaceAPI.from_dict(i)
+                for i in data.get("items", [])
+                if isinstance(i, dict)
+            ],
+            total=data.get("total", 0),
+            page=data.get("page", 1),
+            page_size=data.get("page_size", 0),
+            categories=data.get("categories", []),
+            raw=data,
+        )
+
+    def __iter__(self):
+        return iter(self.items)
+
+    def __len__(self) -> int:
+        return len(self.items)
